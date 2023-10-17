@@ -1,0 +1,43 @@
+{
+  "name": "@cloudbeat/types",
+  "version": "1.0.1",
+  "description": "CloudBeat API data types",
+  "keywords": [
+    "cloudbeat"
+  ],
+  "author": {
+    "name": "CBNR Cloud Solutions LTD",
+    "email": "info@cloudbeat.io",
+    "url": "https://cloudbeat.io"
+  },
+  "homepage": "https://cloudbeat.io",
+  "license": "GPL-3.0",
+  "private": false,
+  "main": "out/index",
+  "types": "out/index",
+  "directories": {
+    "lib": "out",
+    "test": "__tests__"
+  },
+  "files": [
+    "out"
+  ],
+  "exports": {
+    ".": "./out/index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://gitlab.com/cloudbeat/cb-js-commons/"
+  },
+  "scripts": {
+    "test": "echo \"Error: run tests from root\" && exit 1",
+    "build": "npm run clean && npm run compile",
+    "compile": "tsc -b",
+    "lint": "eslint ./src --ext .ts",
+    "clean": "rimraf ./dist ./out tsconfig.tsbuildinfo"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  }
+}

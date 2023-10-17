@@ -1,0 +1,46 @@
+{
+  "name": "@cloudbeat/cypress",
+  "version": "1.0.0-beta.1",
+  "description": "CloudBeat Test Reporting Kit for Cypress",
+  "keywords": [
+    "cloudbeat",
+    "cypress",
+    "test reporting"
+  ],
+  "author": {
+    "name": "CBNR Cloud Solutions LTD",
+    "email": "info@cloudbeat.io",
+    "url": "https://cloudbeat.io"
+  },
+  "homepage": "https://cloudbeat.io",
+  "license": "GPL-3.0",
+  "private": false,
+  "main": "out/index",
+  "types": "out/index",
+  "directories": {
+    "lib": "lib",
+    "test": "__tests__"
+  },
+  "files": [
+    "out"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://gitlab.com/cloudbeat/cb-js-commons/"
+  },
+  "dependencies": {
+    "@cloudbeat/types": "^1.0.0-beta.5",
+    "debug": "^4.3.4",
+    "moment": "^2.29.4"
+  },
+  "scripts": {
+    "build": "npm run clean && npm run compile",
+    "compile": "tsc -b",
+    "lint": "eslint ./src --ext .ts",
+    "clean": "rm -rf ./dist ./out tsconfig.tsbuildinfo"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  }
+}
