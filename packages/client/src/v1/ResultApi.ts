@@ -2,8 +2,8 @@ import Debug from 'debug';
 import { CbApiError } from '../base/CbApiError';
 import { sleep } from '../helpers';
 import { ApiBaseClientV1 } from './ApiBaseClientV1';
-import * as V1_API_ENDPOINTS from './endpoints';
 import { GetResultCasesTagsResponse, TestCaseTagListDto } from './dto/result/GetResultCasesTagsResponse';
+import * as V1_API_ENDPOINTS from './endpoints';
 
 const error = Debug('RuntimeApi:error');
 const RESULT_PULLING_RETRIES = 10;
@@ -37,7 +37,7 @@ export class ResultApi extends ApiBaseClientV1 {
                 }
                 else if (e.response && e.response.status && e.response.status !== 202) {
                     error(e);
-                    throw new CbApiError(e);
+                    throw new CbApiError(e as Error);
                 }
             }
             await sleep(delayTime);
@@ -58,7 +58,7 @@ export class ResultApi extends ApiBaseClientV1 {
         }
         catch (e: any) {
             error(e);
-            throw new CbApiError(e);
+            throw new CbApiError(e as Error);
         }
     }
 }

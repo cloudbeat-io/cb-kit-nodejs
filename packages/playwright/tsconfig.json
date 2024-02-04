@@ -1,0 +1,18 @@
+{
+ "extends": "../../tsconfig.json",
+ "compilerOptions": {
+   "outDir": "./out",
+   "rootDir": "./src",
+   "composite": true,
+   "declaration": true,
+   "lib": ["esnext", "dom", "DOM.Iterable"],
+ },
+ "include": [
+   "./src"
+ ],
+ "references": [
+   {
+     "path": "../types/tsconfig.json"
+   }
+ ]
+}

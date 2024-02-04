@@ -21,116 +21,170 @@ export class GetRunResponse {
 }
 
 export class GetRunDto {
-    runId: string;
-    entityId: number;
-    entityType: string;
-    runName: string;
-    resultId: number | null;
-    startTime: string;
-    endTime: string | null;
-    duration: number | null;
-    status: string;
-    progress: number;
-    statusLastUpdate: string;
-    executingUserName: string;
-    executingUserId: number;
-    projectName: string;
-    projectId: number | null;
-    instances: GetRunInstanceDto[];
+    runId?: string;
+    entityId?: number;
+    entityType?: string;
+    runName?: string;
+    resultId?: number | null;
+    startTime?: string;
+    endTime?: string | null;
+    duration?: number | null;
+    status?: string;
+    progress?: number;
+    statusLastUpdate?: string;
+    executingUserName?: string;
+    executingUserId?: number;
+    projectName?: string;
+    projectId?: number | null;
+    instances?: GetRunInstanceDto[];
 
     constructor(data: any) {
         Object.assign<GetRunDto, any>(this, data);
-        this.instances = this.instances.map(i => new GetRunInstanceDto(i));
+        this.instances = this.instances ? this.instances.map(i => new GetRunInstanceDto(i)) : [];
     }
 
     public toModel(): RunStatus {
+        if (!this.runId) {
+            throw new Error('runId is required');
+        }
+        if (!this.entityId) {
+            throw new Error('entityId is required');
+        }
+        if (!this.runName) {
+            throw new Error('runName is required');
+        }
+        if (!this.resultId) {
+            throw new Error('resultId is required');
+        }
+        if (!this.startTime) {
+            throw new Error('startTime is required');
+        }
+        if (!this.duration) {
+            throw new Error('duration is required');
+        }
+        if (!this.progress) {
+            throw new Error('progress is required');
+        }
+        if (!this.executingUserName) {
+            throw new Error('executingUserName is required');
+        }
+        if (!this.projectName) {
+            throw new Error('projectName is required');
+        }
+        if (!this.executingUserId) {
+            throw new Error('executingUserId is required');
+        }
+        if (!this.projectId) {
+            throw new Error('projectId is required');
+        }
+        if (!this.status) {
+            throw new Error('status is required');
+        }
+        if (!this.entityType) {
+            throw new Error('entityType is required');
+        }
         const newRun: RunStatus = {
             runId: this.runId,
             entityId: this.entityId,
-            entityType: EntityTypeEnum[this.entityType],
+            entityType: EntityTypeEnum[parseInt(this.entityType, 10)] as any,
             runName: this.runName,
             resultId: this.resultId,
-            startTime: convertStringDateToEpoch(this.startTime),
+            startTime: convertStringDateToEpoch(this.startTime) || 0,
             endTime: this.endTime ? convertStringDateToEpoch(this.endTime) : undefined,
             duration: this.duration,
-            status: RunStatusEnum[this.status],
+            status: RunStatusEnum[parseInt(this.status, 10)] as any,
             progress: this.progress,
-            statusLastUpdate: convertStringDateToEpoch(this.statusLastUpdate),
+            statusLastUpdate: convertStringDateToEpoch(this.statusLastUpdate) || 0,
             executingUserName: this.executingUserName,
             executingUserId: this.executingUserId,
             projectName: this.projectName,
             projectId: this.projectId,
-            instances: this.instances ? this.instances.map((i: GetRunInstanceDto) => i.toModel()) : undefined,
+            instances: this.instances ? this.instances.map((i: GetRunInstanceDto) => i.toModel()) : [],
         };
         return newRun;
     }
 }
 
 export class GetRunInstanceDto {
-    id: string;
-    runId: string;
-    startTime: string;
-    endTime: string | null;
-    pendingDuration: number;
-    initializingStartTime: string | null;
-    initializingDuration: number | null;
-    runningStartTime: string | null;
-    runningDuration: number | null;
-    status: string;
-    statusLastUpdate: string;
-    progress: number;
-    capabilitiesJson: { [key: string]: any };
-    browserName?: string;
-    browserVersion?: string;
-    deviceName?: string;
-    locationName: string;
-    outputLog: string;
-    casesStatus: GetRunCasesStatusJsonDto[];
+    public id?: string;
+    public runId?: string;
+    public startTime?: string;
+    public endTime?: string | null;
+    public pendingDuration?: number;
+    public initializingStartTime?: string | null;
+    public initializingDuration?: number | null;
+    public runningStartTime?: string | null;
+    public runningDuration?: number | null;
+    public status?: RunStatusEnum;
+    public statusLastUpdate?: string;
+    public progress?: number;
+    public capabilitiesJson?: { [key: string]: any };
+    public browserName?: string;
+    public browserVersion?: string;
+    public deviceName?: string;
+    public locationName?: string;
+    public outputLog?: string;
+    public casesStatus?: GetRunCasesStatusJsonDto[];
 
     constructor(data: any) {
         Object.assign<GetRunInstanceDto, any>(this, data);
-        this.casesStatus = this.casesStatus.map(cs => new GetRunCasesStatusJsonDto(cs));
+        this.casesStatus = this.casesStatus ? this.casesStatus.map(cs => new GetRunCasesStatusJsonDto(cs)) : [];
     }
 
     public toModel(): RunInstanceStatus {
+        if (!this.id) {
+            throw new Error('id is required');
+        }
+        if (!this.runId) {
+            throw new Error('runId is required');
+        }
+        if (!this.locationName) {
+            throw new Error('locationName is required');
+        }
         const newInstance: RunInstanceStatus = {
             id: this.id,
             runId: this.runId,
-            startTime: convertStringDateToEpoch(this.startTime),
+            startTime: convertStringDateToEpoch(this.startTime) || 0,
             endTime: this.endTime ? convertStringDateToEpoch(this.endTime) : undefined,
-            pendingDuration: this.pendingDuration,
-            initializingStartTime: this.initializingStartTime ? convertStringDateToEpoch(this.initializingStartTime) : undefined,
-            initializingDuration: this.initializingDuration,
+            pendingDuration: this.pendingDuration || 0,
+            initializingStartTime: this.initializingStartTime ? convertStringDateToEpoch(this.initializingStartTime) || 0 : 0,
+            initializingDuration: this.initializingDuration || 0,
             runningStartTime: this.runningStartTime ? convertStringDateToEpoch(this.runningStartTime) : undefined,
-            runningDuration: this.runningDuration,
-            status: RunStatusEnum[this.status],
-            statusLastUpdate: convertStringDateToEpoch(this.statusLastUpdate),
-            progress: this.progress,
-            capabilities: this.capabilitiesJson,
+            runningDuration: this.runningDuration || 0,
+            status: this.status || RunStatusEnum.Finished,
+            statusLastUpdate: convertStringDateToEpoch(this.statusLastUpdate) || 0,
+            progress: this.progress || 0,
+            capabilities: this.capabilitiesJson || {},
             browserName: this.browserName,
             browserVersion: this.browserVersion,
             deviceName: this.deviceName,
             locationName: this.locationName,
             outputLog: this.outputLog,
-            casesStatus: this.casesStatus.map(cs => cs.toMap()),
+            casesStatus: this.casesStatus ? this.casesStatus.map(cs => cs.toMap()) : [],
         };
         return newInstance;
     }
 }
 
 export class GetRunCasesStatusJsonDto {
-    id: number;
-    name: string;
-    order: number;
-    progress: number;
-    iterationsFailed: number;
-    iterationsPassed: number;
+    id?: number;
+    name?: string;
+    order = 0;
+    progress = 0;
+    iterationsFailed = 0;
+    iterationsPassed = 0;
 
     constructor(data: any) {
         Object.assign<GetRunCasesStatusJsonDto, any>(this, data);
     }
 
     public toMap(): RunInstanceCaseStatus {
+        if (!this.id) {
+            throw new Error('id is required');
+        }
+        if (!this.name) {
+            throw new Error('name is required');
+        }
         const newCaseStatus: RunInstanceCaseStatus = {
             id: this.id,
             name: this.name,

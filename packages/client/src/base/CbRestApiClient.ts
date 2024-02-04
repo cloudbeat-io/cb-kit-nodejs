@@ -1,5 +1,5 @@
 import { URLSearchParams } from 'url';
-import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
+import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 import Debug from 'debug';
 
 const debug = Debug('RuntimeApi');
@@ -26,7 +26,7 @@ export class CbRestApiClient {
         this._initializeResponseInterceptor();
     }
 
-    protected _handleRequest = (config: AxiosRequestConfig) => {
+    protected _handleRequest = (config: InternalAxiosRequestConfig) => {
         config.headers['Content-Type'] = 'application/json';
         // TODO:
         //      Should add support for X-Api-Key header
@@ -46,13 +46,13 @@ export class CbRestApiClient {
             }
 
             // append query string to the url
-            if (!config.url.endsWith('?') && !config.url.endsWith('&')) {
+            if (config.url?.endsWith('?') && config.url?.endsWith('&')) {
                 config.url += '?';
             }
             config.url += params.toString();
         }
         // log request
-        debug(`REQ: ${config.method} ${config.url}`);
+        debug(`REQ: ${config.method!} ${config.url!}`);
         return config;
     };
 

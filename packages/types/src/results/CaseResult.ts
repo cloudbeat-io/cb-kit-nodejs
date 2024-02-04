@@ -1,10 +1,11 @@
+import { Attachment } from './Attachment';
 import { LogResult } from './LogResult';
 import { ResultStatusEnum } from './ResultStatusEnum';
 import { StepResult } from './StepResult';
 
 export interface CaseResult {
     id: string;
-    fqn?: string;
+    fqn: string;
     name: string;
     location?: string;
     startTime: number;
@@ -17,5 +18,8 @@ export interface CaseResult {
     context?: any;
     logs?: LogResult[];
     steps?: StepResult[];
+    hooks?: StepResult[];
+    testAttributes?: {[key: string]: any};
     har?: {[key: string]: string};
+    attachments?: Attachment[];
 }

@@ -1,7 +1,7 @@
 export class CbApiError extends Error {
     private path?: string;
 
-    constructor(msgOrError: any) {
+    constructor(msgOrError: string | Error) {
         super(typeof msgOrError === 'string' ? msgOrError : msgOrError.message ? msgOrError.message : undefined);
         this.name = this.constructor.name;
 

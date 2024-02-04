@@ -15,5 +15,7 @@ export interface SuiteResult {
     status?: ResultStatusEnum;
     failure?: FailureResult;
     cases: CaseResult[];
+    suites: SuiteResult[];
     hooks: StepResult[];
+    testAttributes?: {[key: string]: any};
 }

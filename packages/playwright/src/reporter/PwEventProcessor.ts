@@ -1,0 +1,310 @@
+import fs from 'fs';
+import path from 'path';
+import {
+    CaseResult as CbCaseResult,
+    FailureResult as CbFailureResult,
+    StepResult as CbStepResult,
+    SuiteResult as CbSuiteResult,
+    TestResult as CbTestResult,
+    ResultStatusEnum,
+    StepTypeEnum,
+} from '@cloudbeat/types';
+
+import { FullConfig, TestStatus } from '@playwright/test';
+import { FullResult, Location, Suite, TestCase, TestError, TestResult, TestStep } from '@playwright/test/reporter';
+import { v4 as uuidv4 } from 'uuid';
+
+import { CbReporterClient } from '../clients/CbReporterClient';
+import { createCbCaseResult, createCbStepResult, createCbSuiteResult, endCbCaseResult, endCbStepResult, getCodeLocation, getPwSuiteFqn, getPwSuiteKey } from '../pwHelpers';
+import { CbReporterOptions } from '../types/CbReporterOptions';
+
+
+const REPORT_PW_STEP_CATEGORIES = [
+    'expect',
+    'hook',
+    'pw:api',
+    // 'fixture',
+];
+
+export class PwEventProcessor {
+    // CB run details
+    private runId?: string;
+    private instanceId?: string;
+    private agentId?: string;
+    private accountId?: number;
+    private userId?: number;
+    private locationId?: string;
+    // holds entire structure of CB result
+    private cbRunResult: CbTestResult | null = null;
+    private readonly cbSuiteCache = new Map<string, CbSuiteResult>();
+    private readonly cbCaseCache = new Map<TestCase, CbCaseResult>();
+    private pwRootSuite?: Suite;
+    // counters to help calculate overall test run progress
+    private allCasesCount: number = 1;
+    private lastCaseOrder: number = 1;
+
+    constructor(
+        private cbClient: CbReporterClient,
+        private cbReporterOpts: CbReporterOptions,
+    ) {
+        this.retrieveCbRunOptions();
+    }
+
+    public onRunBegin(pwConfig: FullConfig, pwSuite: Suite) {
+        this.pwRootSuite = pwSuite;
+        this.allCasesCount = pwSuite.allTests().length;
+        this.cbRunResult = {
+            startTime: (new Date()).getTime(),
+            runId: this.runId!,
+            instanceId: this.instanceId!,
+            agentId: this.agentId!,
+            accountId: this.accountId,
+            userId: this.userId,
+            locationId: this.locationId!.toString(),
+            totalCases: this.allCasesCount,
+            metadata: {
+                executingUserId: this.userId!,
+                accountId: this.accountId!,
+                framework: 'Playwright',
+                language: 'JavaScript',
+            },
+            capabilities: this._getCapabilities(pwConfig),
+            suites: [],
+        };
+        this.cbClient.onRunStart();
+    }
+
+    public onTestBegin(pwTest: TestCase) {
+        const cbParentSuite = this.getParentCbSuite(pwTest.parent);
+        const newCbCase = createCbCaseResult(pwTest, cbParentSuite);
+        this.cbCaseCache.set(pwTest, newCbCase);
+    }
+
+    public onTestEnd(pwTest: TestCase, pwResult: TestResult) {
+        if (!this.cbRunResult || !this.cbCaseCache.has(pwTest)) {
+            return;
+        }
+        const cbCaseResult = this.cbCaseCache.get(pwTest)!;
+        // @ts-expect-error access to private property _parent
+        // eslint-disable-next-line no-underscore-dangle
+        const cbSuiteResult = cbCaseResult._parent;
+        const { testDir } = pwTest.parent.project() || {};
+        // TODO: retrieve parent cb suite
+        cbSuiteResult.endTime = (new Date().getTime());
+        cbSuiteResult.duration = cbSuiteResult.endTime - cbSuiteResult.startTime;
+        cbCaseResult.status = this._getResultStatusEnum(pwResult.status);
+        cbCaseResult.endTime = (new Date()).getTime();
+        cbCaseResult.duration = cbCaseResult.endTime - cbCaseResult.startTime;
+        cbCaseResult.reRunCount = pwResult.retry;
+
+        // await this._sendIsRunningStatus(test, result);
+        // increase order count for the next case report
+        this.lastCaseOrder++;
+
+        const failureScreenshot = cbCaseResult.status === ResultStatusEnum.FAILED ? pwResult.attachments.find(a => a.name === 'screenshot') : undefined;
+
+        cbCaseResult.steps = this._getCbStepsFromPwSteps(pwResult.steps, testDir, failureScreenshot);
+    }
+
+    public onRunEnd(result: FullResult) {
+        if (!this.cbRunResult) {
+            return; // not suppose to happen, log this
+        }
+        this.cbRunResult.endTime = (new Date()).getTime();
+        this.cbRunResult.status = this._getResultStatusEnum(result.status);
+        this.cbRunResult.duration = this.cbRunResult.endTime - this.cbRunResult.startTime;
+        this.removeInternalPropsFromResult();
+        this.cbClient.onRunEnd(this.cbRunResult);
+    }
+
+    public onStepBegin(test: TestCase, result: TestResult, step: TestStep) {
+    }
+
+    public onStepEnd(test: TestCase, result: TestResult, step: TestStep) {
+    }
+
+    public onError(error: TestError): void {
+    }
+
+    private removeInternalPropsFromResult() {
+        if (this.cbRunResult) {
+            this.removeInternalPropsFromSuites(this.cbRunResult.suites);
+        }
+    }
+
+    private removeInternalPropsFromSuites(suites: CbSuiteResult[]) {
+        for (const suiteResult of suites) {
+            if (suiteResult.cases && suiteResult.cases.length) {
+                for (const caseResult of suiteResult.cases) {
+                    // @ts-expect-error access to private property _parent
+                    // eslint-disable-next-line no-underscore-dangle
+                    if (caseResult._parent) {
+                        // @ts-expect-error access to private property _parent
+                        // eslint-disable-next-line no-underscore-dangle
+                        delete caseResult._parent;
+                    }
+                }
+            }
+            if (suiteResult.suites && suiteResult.suites.length) {
+                this.removeInternalPropsFromSuites(suiteResult.suites);
+            }
+        }
+    }
+
+    private getParentCbSuite(pwSuite: Suite): CbSuiteResult {
+        const suiteKey = getPwSuiteKey(pwSuite);
+        if (this.cbSuiteCache.has(suiteKey)) {
+            return this.cbSuiteCache.get(suiteKey)!;
+        }
+        let cbParentSuite;
+        // create missing suite hierarchy up to spec file suite - ignore root and 'project' suites
+        if (pwSuite.parent && pwSuite.parent !== this.pwRootSuite && pwSuite.parent.location) {
+            cbParentSuite = this.getParentCbSuite(pwSuite.parent);
+        }
+        const cbSuite = createCbSuiteResult(pwSuite, cbParentSuite);
+        if (!cbParentSuite) {
+            this.cbRunResult?.suites.push(cbSuite);
+        }
+        this.cbSuiteCache.set(suiteKey, cbSuite);
+        return cbSuite;
+    }
+
+    private _getCapabilities(config: FullConfig): any {
+        // not suppose to happen
+        if (config.projects.length === 0) {
+            return {};
+        }
+        const browserName = config.projects[0].use.browserName || null;
+        const channel = config.projects[0].use.channel || null;
+        if (browserName === 'chromium') {
+            return { browserName: channel };
+        }
+        else if (browserName) {
+            return { browserName };
+        }
+        return {};
+    }
+
+    private _getFileNameFromPath(filePath: string): string {
+        const fileName = path.parse(filePath).name;
+        // remove .spec suffix, if exists
+        return fileName.replace(/\.spec$/, '');
+    }
+
+    private addSkippedTests() {
+        /* const skippedPwCases = this.suite.allTests().filter((pwCase) => !this.cbCaseCache.has(pwCase));
+
+        skippedPwCases.forEach((pwCase) => {
+            this.onTestBegin(pwCase);
+            const cbCase = this.cbCaseCache.get(pwCase);
+            if (cbCase) {
+            cbCase.endTime = cbCase.startTime = (this.startTime || new Date().getTime());
+            cbCase.duration = 0;
+            cbCase.status = ResultStatusEnum.SKIPPED;
+            }
+        });*/
+    }
+
+    private _getCbStepsFromPwSteps(steps: TestStep[], testDir?: string, failureScreenshot?: { name: string; path?: string; body?: Buffer; contentType: string }): CbStepResult[] {
+        return steps.filter(s => REPORT_PW_STEP_CATEGORIES.includes(s.category)).map((pwStep: TestStep) => {
+            return {
+                id: uuidv4(),
+                _category: pwStep.category,
+                startTime: new Date(pwStep.startTime).getTime(),
+                endTime: new Date(pwStep.startTime).getTime() + pwStep.duration,
+                duration: pwStep.duration,
+                name: pwStep.title,
+                location: pwStep.location ? getCodeLocation(pwStep.location, testDir) : undefined,
+                type: this._getCbStepTypeFromPwCategory(pwStep.category),
+                status: pwStep.error ? ResultStatusEnum.FAILED : ResultStatusEnum.PASSED,
+                failure: this._getCbFailureFromPwError(pwStep.error),
+                screenShot: pwStep.error && failureScreenshot ? this._getBase64FromScreeenshot(failureScreenshot) : undefined,
+                steps: this._getCbStepsFromPwSteps(pwStep.steps, testDir, pwStep.error ? undefined : failureScreenshot),
+            };
+        });
+    }
+
+    private _getBase64FromScreeenshot(screenshot: { name: string; path?: string; body?: Buffer; contentType: string }): string | undefined {
+        if (screenshot.body) {
+            return screenshot.body.toString('base64');
+        }
+        else if (screenshot.path) {
+            return fs.readFileSync(screenshot.path, 'base64');
+        }
+        return undefined;
+    }
+
+    private _getCbStepTypeFromPwCategory(category: string): StepTypeEnum {
+        switch (category) {
+            case 'expect':
+                return StepTypeEnum.ASSERTION;
+            case 'hook':
+                return StepTypeEnum.HOOK;
+            case 'test.step':
+                return StepTypeEnum.TRANSACTION;
+        }
+        return StepTypeEnum.GENERAL;
+    }
+
+    private _getCbFailureFromPwError(error?: TestError): CbFailureResult | undefined {
+        if (!error) {
+            return undefined;
+        }
+        const message = error.message && stripAscii(error.message);
+        let stack = error.stack && stripAscii(error.stack);
+        if (stack && message && stack.startsWith(`Error: ${message}`)) {
+            stack = stack.substr(message.length + 'Error: '.length);
+        }
+        return {
+            type: 'Error',
+            message: message,
+            data: stack,
+        };
+    }
+
+    private _getResultStatusEnum(status: 'passed' | 'failed' | 'timedout' | 'interrupted' | TestStatus): ResultStatusEnum {
+        if (status === 'passed') {
+            return ResultStatusEnum.PASSED;
+        }
+        else {
+            return ResultStatusEnum.FAILED;
+        }
+    }
+
+    private retrieveCbRunOptions() {
+        if (!process.env.CB_RUN_ID) {
+            throw new Error('CB_RUN_ID is required');
+        }
+        if (!process.env.CB_INSTANCE_ID) {
+            throw new Error('CB_INSTANCE_ID is required');
+        }
+        if (!process.env.CB_AGENT_ID) {
+            throw new Error('CB_AGENT_ID is required');
+        }
+        if (!process.env.CB_ACCOUNT_ID) {
+            throw new Error('CB_ACCOUNT_ID is required');
+        }
+        if (!process.env.CB_USER_ID) {
+            throw new Error('CB_USER_ID is required');
+        }
+        if (!process.env.CB_LOCATION_ID) {
+            throw new Error('CB_LOCATION_ID is required');
+        }
+        this.runId = process.env.CB_RUN_ID;
+        this.instanceId = process.env.CB_INSTANCE_ID;
+        this.agentId = process.env.CB_AGENT_ID;
+        this.accountId = parseInt(process.env.CB_ACCOUNT_ID, 10);
+        this.userId = parseInt(process.env.CB_USER_ID, 10);
+        this.locationId = process.env.CB_LOCATION_ID;
+    }
+
+}
+
+const asciiRegex = new RegExp(
+    '[\\u001B\\u009B][[\\]()#;?]*(?:(?:(?:[a-zA-Z\\d]*(?:;[-a-zA-Z\\d\\/#&.:=?%@~_]*)*)?\\u0007)|(?:(?:\\d{1,4}(?:;\\d{0,4})*)?[\\dA-PR-TZcf-ntqry=><~]))', // eslint-disable-line no-control-regex
+    'g',
+);
+
+const stripAscii = (str: string): string => {
+    return str.replace(asciiRegex, '');
+};

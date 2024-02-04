@@ -1,4 +1,5 @@
-import * as moment from 'moment';
+// import * as moment from 'moment';
+import { default as moment, Moment } from 'moment';
 
 export function convertStringDateToEpoch(stringDate?: string): number | undefined {
     if (!stringDate) {
@@ -7,4 +8,4 @@ export function convertStringDateToEpoch(stringDate?: string): number | undefine
     return moment(stringDate).valueOf();
 }
 
-export const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+export const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));

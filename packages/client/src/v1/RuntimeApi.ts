@@ -31,7 +31,7 @@ export class RuntimeApi extends ApiBaseClientV1 {
                 return null;
             }
             error(e);
-            throw new CbApiError(e);
+            throw new CbApiError(e as Error);
         }
     }
 
@@ -50,7 +50,7 @@ export class RuntimeApi extends ApiBaseClientV1 {
                 return null;
             }
             error(e);
-            throw new CbApiError(e);
+            throw new CbApiError(e as Error);
         }
     }
 
@@ -69,7 +69,7 @@ export class RuntimeApi extends ApiBaseClientV1 {
                 return null;
             }
             error(e);
-            throw new CbApiError(e);
+            throw new CbApiError(e as Error);
         }
     }
 
@@ -84,7 +84,7 @@ export class RuntimeApi extends ApiBaseClientV1 {
         }
         catch (e: any) {
             error(e);
-            throw new CbApiError(e);
+            throw new CbApiError(e as Error);
         }
     }
 }
