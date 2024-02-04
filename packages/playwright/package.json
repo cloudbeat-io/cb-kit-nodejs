@@ -1,6 +1,6 @@
 {
   "name": "@cloudbeat/playwright",
-  "version": "1.0.0-beta.1",
+  "version": "1.0.0-alpha.0",
   "description": "CloudBeat Reporter for Playwright",
   "keywords": [
     "cloudbeat",
@@ -29,7 +29,6 @@
     "url": "https://gitlab.com/cloudbeat/cb-kit-nodejs/"
   },
   "dependencies": {
-    "@cloudbeat/types": "^1.0.0-beta.5",
     "@playwright/test": "^1.34.1",
     "debug": "^4.3.4",
     "js-queue": "^2.0.2",
@@ -48,6 +47,7 @@
     "registry": "https://registry.npmjs.org/"
   },
   "devDependencies": {
-    "@types/uuid": "^9.0.8"
+    "@types/uuid": "^9.0.8",
+    "@cloudbeat/types": "^1.0.1"
   }
 }
