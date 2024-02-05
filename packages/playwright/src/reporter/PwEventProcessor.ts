@@ -266,6 +266,9 @@ export class PwEventProcessor {
         if (status === 'passed') {
             return ResultStatusEnum.PASSED;
         }
+        else if (status === 'skipped') {
+            return ResultStatusEnum.SKIPPED;
+        }
         else {
             return ResultStatusEnum.FAILED;
         }
