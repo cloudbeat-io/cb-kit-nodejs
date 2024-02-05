@@ -37,7 +37,7 @@
     "build": "npm run clean && npm run compile",
     "compile": "tsc -b",
     "lint": "eslint ./src --ext .ts",
-    "clean": "rm -rf ./dist ./out tsconfig.tsbuildinfo"
+    "clean": "rimraf ./dist ./out tsconfig.tsbuildinfo"
   },
   "publishConfig": {
     "access": "public",
