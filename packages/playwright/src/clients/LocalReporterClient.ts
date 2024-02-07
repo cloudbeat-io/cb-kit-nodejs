@@ -56,6 +56,12 @@ export class LocalReporterClient implements CbReporterClient {
         if (!this.socket) {
             return;
         }
+
+        this.socket.io.on('error', (err) => {
+			console.error('socket.io error', err);
+            this.queue.stop = true;
+        });
+
         this.socket.on('connect', () => {
             this.queue.stop = false;
             this.queue.next();
