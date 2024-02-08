@@ -34,6 +34,7 @@ export class PwEventProcessor {
     private accountId?: number;
     private userId?: number;
     private locationId?: string;
+    private rootDir?: string;    
     // holds entire structure of CB result
     private cbRunResult: CbTestResult | null = null;
     private readonly cbSuiteCache = new Map<string, CbSuiteResult>();
@@ -51,6 +52,7 @@ export class PwEventProcessor {
     }
 
     public onRunBegin(pwConfig: FullConfig, pwSuite: Suite) {
+        this.rootDir = pwConfig.rootDir + path.sep;       
         this.pwRootSuite = pwSuite;
         this.allCasesCount = pwSuite.allTests().length;
         this.cbRunResult = {
@@ -254,6 +256,7 @@ export class PwEventProcessor {
         let stack = error.stack && stripAscii(error.stack);
         if (stack && message && stack.startsWith(message)) {
             stack = stack.substr(message.length);
+            stack = stack.replaceAll(this.rootDir as string, '');
         }
         return {
             type: 'Error',
