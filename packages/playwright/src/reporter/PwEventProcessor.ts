@@ -23,7 +23,7 @@ const REPORT_PW_STEP_CATEGORIES = [
     'expect',
     'hook',
     'pw:api',
-    // 'fixture',
+    'test.step'
 ];
 
 export class PwEventProcessor {
