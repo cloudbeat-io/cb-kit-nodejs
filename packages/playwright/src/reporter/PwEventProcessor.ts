@@ -252,8 +252,8 @@ export class PwEventProcessor {
         }
         const message = error.message && stripAscii(error.message);
         let stack = error.stack && stripAscii(error.stack);
-        if (stack && message && stack.startsWith(`Error: ${message}`)) {
-            stack = stack.substr(message.length + 'Error: '.length);
+        if (stack && message && stack.startsWith(message)) {
+            stack = stack.substr(message.length);
         }
         return {
             type: 'Error',
