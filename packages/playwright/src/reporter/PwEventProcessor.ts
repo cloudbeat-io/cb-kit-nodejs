@@ -209,6 +209,10 @@ export class PwEventProcessor {
 
     private _getCbStepsFromPwSteps(steps: TestStep[], testDir?: string, failureScreenshot?: { name: string; path?: string; body?: Buffer; contentType: string }): CbStepResult[] {
         return steps.filter(s => REPORT_PW_STEP_CATEGORIES.includes(s.category)).map((pwStep: TestStep) => {
+            const childSteps = this._getCbStepsFromPwSteps(pwStep.steps, testDir, pwStep.error ? undefined : failureScreenshot);
+
+            const childStepFailed = childSteps.some((x) => x.status === ResultStatusEnum.FAILED);
+
             return {
                 id: uuidv4(),
                 _category: pwStep.category,
@@ -218,10 +222,10 @@ export class PwEventProcessor {
                 name: pwStep.title,
                 location: pwStep.location ? getCodeLocation(pwStep.location, testDir) : undefined,
                 type: this._getCbStepTypeFromPwCategory(pwStep.category),
-                status: pwStep.error ? ResultStatusEnum.FAILED : ResultStatusEnum.PASSED,
+                status: pwStep.error || childStepFailed ? ResultStatusEnum.FAILED : ResultStatusEnum.PASSED,
                 failure: this._getCbFailureFromPwError(pwStep.error),
                 screenShot: pwStep.error && failureScreenshot ? this._getBase64FromScreeenshot(failureScreenshot) : undefined,
-                steps: this._getCbStepsFromPwSteps(pwStep.steps, testDir, pwStep.error ? undefined : failureScreenshot),
+                steps: childSteps,
             };
         });
     }
