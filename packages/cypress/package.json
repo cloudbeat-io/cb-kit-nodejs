@@ -36,7 +36,7 @@
   "scripts": {
     "build": "npm run clean && npm run compile",
     "compile": "tsc -b",
-    "lint": "eslint ./src --ext .ts",
+    "lint": "eslint ./src --ext .js",
     "clean": "rimraf ./dist ./out tsconfig.tsbuildinfo"
   },
   "publishConfig": {

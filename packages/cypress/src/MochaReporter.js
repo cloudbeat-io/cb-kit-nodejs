@@ -1,4 +1,18 @@
+const { fork } = require('child_process');
 const Mocha = require('mocha');
+const { reporterEvents, testItemStatuses } = require('./constants');
+const { IPC_EVENTS } = require('./ipcEvents');
+const { startIPCServer } = require('./ipcServer');
+
+const {
+  getConfig,
+  getLaunchStartObject,
+  getSuiteStartObject,
+  getSuiteEndObject,
+  getTestInfo,
+  getHookInfo,
+  getTotalSpecs,
+} = require('./utils');
 
 const {
   EVENT_RUN_BEGIN,
@@ -12,19 +26,6 @@ const {
   EVENT_TEST_FAIL,
 } = Mocha.Runner.constants;
 
-const { fork } = require('child_process');
-const { startIPCServer } = require('./ipcServer');
-const { reporterEvents, testItemStatuses } = require('./constants');
-const { IPC_EVENTS } = require('./ipcEvents');
-const {
-  getConfig,
-  getLaunchStartObject,
-  getSuiteStartObject,
-  getSuiteEndObject,
-  getTestInfo,
-  getHookInfo,
-  getTotalSpecs,
-} = require('./utils');
 
 const { FAILED } = testItemStatuses;
 
@@ -33,3 +34,5 @@ class CypressReporter extends Mocha.reporters.Base {
     super(runner);
     this.runner = runner;
     const config = getConfig(initialConfig);
+  }
+}

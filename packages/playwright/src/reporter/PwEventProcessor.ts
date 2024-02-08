@@ -23,7 +23,7 @@ const REPORT_PW_STEP_CATEGORIES = [
     'expect',
     'hook',
     'pw:api',
-    'test.step'
+    'test.step',
 ];
 
 export class PwEventProcessor {
@@ -34,7 +34,7 @@ export class PwEventProcessor {
     private accountId?: number;
     private userId?: number;
     private locationId?: string;
-    private rootDir?: string;    
+    private rootDir?: string;
     // holds entire structure of CB result
     private cbRunResult: CbTestResult | null = null;
     private readonly cbSuiteCache = new Map<string, CbSuiteResult>();
@@ -52,7 +52,7 @@ export class PwEventProcessor {
     }
 
     public onRunBegin(pwConfig: FullConfig, pwSuite: Suite) {
-        this.rootDir = pwConfig.rootDir + path.sep;       
+        this.rootDir = pwConfig.rootDir + path.sep;
         this.pwRootSuite = pwSuite;
         this.allCasesCount = pwSuite.allTests().length;
         this.cbRunResult = {

@@ -1,3 +1,8 @@
+/* global Cypress */
+
+const Mocha = require('mocha');
+const io = require('socket.io-client');
+
 const {
     EVENT_TEST_BEGIN,
     EVENT_TEST_FAIL,
@@ -7,10 +12,8 @@ const {
     EVENT_SUITE_END,
     EVENT_TEST_END,
     EVENT_HOOK_BEGIN,
-    EVENT_HOOK_END
+    EVENT_HOOK_END,
 } = Mocha.Runner.constants;
-
-const io = require('socket.io-client');
 
 const getCircularReplacer = () => {
     const seen = new WeakSet();
@@ -18,10 +21,12 @@ const getCircularReplacer = () => {
         if (key === 'subject' || key === 'next') {
             return;
         }
-        if (typeof value === "object" && value !== null) {
+        if (typeof value === 'object' && value !== null) {
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
             if (seen.has(value)) {
                 return;
             }
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
             seen.add(value);
         }
         return value;
@@ -35,13 +40,13 @@ module.exports = class CloudBeatEventReporter {
         this.pendingCommands = {};
         this.pendingCucumberStep = {};
         this.socket = io.connect(
-            'ws://localhost:3000', 
+            'ws://localhost:3000',
             {
                 transports: ['websocket'],
                 origins:'*',
                 reconnectionDelay: 0,
                 reconnectionDelayMax: 10,
-            }
+            },
         );
         this.hookToMochaEvents();
         this.hookToCypressEvents();
@@ -60,9 +65,9 @@ module.exports = class CloudBeatEventReporter {
             })
             .on(EVENT_TEST_FAIL, (test, err) => {
                 this.socket.emit(
-                    'mocha:test:fail', 
-                    JSON.stringify(test, getCircularReplacer()), 
-                    JSON.stringify(err, getCircularReplacer())
+                    'mocha:test:fail',
+                    JSON.stringify(test, getCircularReplacer()),
+                    JSON.stringify(err, getCircularReplacer()),
                 );
             })
             .on(EVENT_TEST_PASS, (test) => {
@@ -109,7 +114,7 @@ module.exports = class CloudBeatEventReporter {
 
     hookToCypressEvents() {
         Cypress.on('log:added', (log) => {
-            
+
             if (log && log.event) {
                 return;
             }
@@ -120,7 +125,7 @@ module.exports = class CloudBeatEventReporter {
             if (log && log.event) {
                 return;
             }
-            
+
             this.emitEvent('log:changed', log);
         });
 
