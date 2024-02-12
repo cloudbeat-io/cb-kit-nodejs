@@ -14,6 +14,7 @@ export interface CaseResult {
     iterationNum: number;
     order?: number;
     status?: ResultStatusEnum;
+    failureReasonId?: number;
     reRunCount?: number;
     context?: any;
     logs?: LogResult[];

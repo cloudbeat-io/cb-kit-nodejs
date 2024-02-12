@@ -1,6 +1,6 @@
 {
   "name": "@cloudbeat/types",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "CloudBeat API data types",
   "keywords": [
     "cloudbeat"
@@ -27,7 +27,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://gitlab.com/cloudbeat/cb-js-commons/"
+    "url": "https://gitlab.com/cloudbeat/cb-kit-nodejs/"
   },
   "scripts": {
     "test": "echo \"Error: run tests from root\" && exit 1",

@@ -1,11 +1,16 @@
 import fs from 'fs';
 import path from 'path';
 import {
+    Attachment,
+    AttachmentSubTypeEnum,
+    AttachmentTypeEnum,
     CaseResult as CbCaseResult,
     FailureResult as CbFailureResult,
     StepResult as CbStepResult,
     SuiteResult as CbSuiteResult,
     TestResult as CbTestResult,
+    FailureReasonEnum,
+    LogLevelEnum,
     ResultStatusEnum,
     StepTypeEnum,
 } from '@cloudbeat/types';
@@ -15,7 +20,7 @@ import { FullResult, Location, Suite, TestCase, TestError, TestResult, TestStep 
 import { v4 as uuidv4 } from 'uuid';
 
 import { CbReporterClient } from '../clients/CbReporterClient';
-import { createCbCaseResult, createCbStepResult, createCbSuiteResult, endCbCaseResult, endCbStepResult, getCodeLocation, getPwSuiteFqn, getPwSuiteKey } from '../pwHelpers';
+import { createCbCaseResult, createCbStepResult, createCbSuiteResult, endCbCaseResult, endCbStepResult, getAttachmentFileNameFromPath, getCodeLocation, getPwSuiteFqn, getPwSuiteKey } from '../pwHelpers';
 import { CbReporterOptions } from '../types/CbReporterOptions';
 
 
@@ -104,6 +109,7 @@ export class PwEventProcessor {
         this.lastCaseOrder++;
 
         const failureScreenshot = cbCaseResult.status === ResultStatusEnum.FAILED ? pwResult.attachments.find(a => a.name === 'screenshot') : undefined;
+        this.addAttachmentsToCase(cbCaseResult, pwResult.attachments);
 
         cbCaseResult.steps = this._getCbStepsFromPwSteps(pwResult.steps, testDir, failureScreenshot);
     }
@@ -126,6 +132,119 @@ export class PwEventProcessor {
     }
 
     public onError(error: TestError): void {
+    }
+
+    public onStdOut(chunk: string | Buffer, pwTest: TestCase | undefined, pwResult: TestResult | undefined) {
+        // try to convert stdout chunk to "cb" util's internal event
+        try {
+            const { type, data, testId } = JSON.parse(String(chunk));
+            switch (type) {
+                case 'setFailureReason':
+                    this.setFailureReason(data.reason as FailureReasonEnum, pwTest);
+                    break;
+                case 'addTestAttribute':
+                    this.addTestAttribute(data.name as string, data.value, pwTest);
+                    break;
+                case 'addOutputData':
+                    this.addOutputData(data.name as string, data.data, pwTest);
+                    break;
+            }
+        }
+        catch {
+            this.addSystemConsoleLog(String(chunk));
+        }
+    }
+
+    private addSystemConsoleLog(message: string, pwTest?: TestCase): void {
+        if (!message || !pwTest) {
+            return;
+        }
+        if (!this.cbRunResult || !this.cbCaseCache.has(pwTest)) {
+            return;
+        }
+        const cbCaseResult = this.cbCaseCache.get(pwTest)!;
+        if (!cbCaseResult.logs) {
+            cbCaseResult.logs = [];
+        }
+        cbCaseResult.logs.push({
+            time: new Date().getTime(),
+            level: LogLevelEnum.INFO,
+            msg: message,
+            src: 'user',
+        });
+    }
+
+    private addOutputData(name: string, data: any, pwTest?: TestCase): void {
+        if (!name || !data || !pwTest) {
+            return;
+        }
+        if (!this.cbRunResult || !this.cbCaseCache.has(pwTest)) {
+            return;
+        }
+        const cbCaseResult = this.cbCaseCache.get(pwTest)!;
+        if (!cbCaseResult.context) {
+            cbCaseResult.context = {};
+        }
+        if (!cbCaseResult.context.resultData) {
+            cbCaseResult.context.resultData = {};
+        }
+        cbCaseResult.context.resultData[name] = data;
+    }
+
+    private setFailureReason(reason?: FailureReasonEnum, pwTest?: TestCase): void {
+        if (!reason || !pwTest) {
+            return;
+        }
+        if (!this.cbRunResult || !this.cbCaseCache.has(pwTest)) {
+            return;
+        }
+        const cbCaseResult = this.cbCaseCache.get(pwTest)!;
+        // cbCaseResult.failureReasonId = FailureReasonEnum[reason];
+    }
+
+    private addTestAttribute(name: string, value: any, pwTest?: TestCase): void {
+        if (!name || !value || !pwTest) {
+            return;
+        }
+        if (!this.cbRunResult || !this.cbCaseCache.has(pwTest)) {
+            return;
+        }
+        const cbCaseResult = this.cbCaseCache.get(pwTest)!;
+        if (!cbCaseResult.testAttributes) {
+            cbCaseResult.testAttributes = {};
+        }
+        cbCaseResult.testAttributes[name] = value;
+    }
+
+    private addAttachmentsToCase(cbCaseResult: CbCaseResult, pwAttachments: { name: string; contentType: string; path?: string | undefined; body?: Buffer | undefined }[]) {
+        if (!cbCaseResult.attachments) {
+            cbCaseResult.attachments = [];
+        }
+        for (const pwAttachment of pwAttachments) {
+            if (!pwAttachment.path) {
+                continue;
+            }
+            if (pwAttachment.name === 'video') {
+                const cbAttachment: Attachment = {
+                    id: uuidv4(),
+                    attachmentType: AttachmentTypeEnum.Video,
+                    attachmentSubType: AttachmentSubTypeEnum.Screencast,
+                    fileName: getAttachmentFileNameFromPath(pwAttachment.path),
+                    filePath: pwAttachment.path,
+                };
+                cbCaseResult.attachments.push(cbAttachment);
+            }
+            else if (pwAttachment.name === 'trace') {
+                const cbAttachment: Attachment = {
+                    id: uuidv4(),
+                    attachmentType: AttachmentTypeEnum.Other,
+                    attachmentSubType: AttachmentSubTypeEnum.PlaywrightTrace,
+                    fileName: getAttachmentFileNameFromPath(pwAttachment.path),
+                    filePath: pwAttachment.path,
+                };
+                cbCaseResult.attachments.push(cbAttachment);
+            }
+        }
     }
 
     private removeInternalPropsFromResult() {

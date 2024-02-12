@@ -141,3 +141,7 @@ export function endCbStepResult(pwStep: TestStep, cbStep: StepResult): void {
 export function endCbCaseResult(pwCase: TestCase, pwResult: TestResult, cbCase: CaseResult): void {
 
 }
+
+export function getAttachmentFileNameFromPath(filePath: string): string {
+    return path.basename(filePath);
+}

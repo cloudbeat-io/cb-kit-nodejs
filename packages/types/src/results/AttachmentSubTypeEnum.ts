@@ -2,5 +2,6 @@
 export enum AttachmentSubTypeEnum {
     Screenshot,
     Screencast,
-    Har
+    Har,
+    PlaywrightTrace,
 }

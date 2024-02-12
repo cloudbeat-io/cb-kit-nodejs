@@ -1,4 +1,4 @@
-import { CaseResult, ResultStatusEnum, StepResult, SuiteResult } from '@cloudbeat/types';
+import { CaseResult, StepResult, SuiteResult } from '@cloudbeat/types';
 import type { FullConfig, TestStatus } from '@playwright/test';
 import type { FullResult, Reporter, Suite, TestCase, TestError, TestResult, TestStep } from '@playwright/test/reporter';
 import { CbReporterClient } from './clients/CbReporterClient';
@@ -28,7 +28,7 @@ export default class CbReporter implements Reporter {
     private readonly cbStepCache = new Map<TestStep, StepResult>();
     private cbRootSuite?: SuiteResult;
     private startTime?: number;
-    private readonly eventProcessor: PwEventProcessor;
+    private readonly eventProcessor?: PwEventProcessor;
 
     private processedDiffs: string[] = [];
 
@@ -43,15 +43,26 @@ export default class CbReporter implements Reporter {
         else {
             this.client = new RemoteReporterClient(this.serverUrl);
         }
-        this.eventProcessor = new PwEventProcessor(this.client, options);
+        // the below will throw an error if we are not running in CB
+        try {
+            this.eventProcessor = new PwEventProcessor(this.client, options);
+        }
+        // so just ignore all PW events if we are not running in CB
+        catch {}
     }
 
     onBegin(pwConfig: FullConfig, pwSuite: Suite): void {
+        if (!this.eventProcessor) {
+            return;
+        }
         this.client.connect();
         this.eventProcessor.onRunBegin(pwConfig, pwSuite);
     }
 
     onTestBegin(pwTest: TestCase): void {
+        if (!this.eventProcessor) {
+            return;
+        }
         this.eventProcessor.onTestBegin(pwTest);
     }
 
@@ -84,6 +95,9 @@ export default class CbReporter implements Reporter {
     }
 
     onTestEnd(pwTest: TestCase, pwResult: TestResult): void {
+        if (!this.eventProcessor) {
+            return;
+        }
         /* const cbCase = this.cbCaseCache.get(pwTest);
         if (!cbCase) {
             return;
@@ -120,6 +134,9 @@ export default class CbReporter implements Reporter {
 
 
     onEnd(pwResult: FullResult): void {
+        if (!this.eventProcessor) {
+            return;
+        }
         // this.addSkippedTests();
         // this.client.onEnd(this.cbRootSuite);
         this.eventProcessor.onRunEnd(pwResult);
@@ -128,20 +145,16 @@ export default class CbReporter implements Reporter {
         }*/
     }
 
+    onStdOut(chunk: string | Buffer, pwTest?: TestCase, pwResult?: TestResult): void {
+        if (!this.eventProcessor) {
+            return;
+        }
+        this.eventProcessor.onStdOut(chunk, pwTest, pwResult);
+    }
+
     printsToStdio(): boolean {
         return false;
     }
-
-    private getParentCbSuite(pwSuite: Suite): SuiteResult {
-        if (this.cbSuiteCache.has(pwSuite)) {
-            return this.cbSuiteCache.get(pwSuite)!;
-        }
-        let cbParentSuite;
-        if (pwSuite.parent) {
-            cbParentSuite = this.getParentCbSuite(pwSuite.parent);
-        }
-        const cbSuite = createCbSuiteResult(pwSuite, cbParentSuite);
-        this.cbSuiteCache.set(pwSuite, cbSuite);
-        return cbSuite;
-    }
 }
+
+export * from './cbUtils';
