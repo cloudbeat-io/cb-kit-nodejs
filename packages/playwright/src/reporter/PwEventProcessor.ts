@@ -103,7 +103,8 @@ export class PwEventProcessor {
         cbCaseResult.endTime = (new Date()).getTime();
         cbCaseResult.duration = cbCaseResult.endTime - cbCaseResult.startTime;
         cbCaseResult.reRunCount = pwResult.retry;
-
+        // note: this will not work for tests executed on multiple browsers...
+        this.cbRunResult.metadata!.browserName = pwTest.parent.project()!.name;
         // await this._sendIsRunningStatus(test, result);
         // increase order count for the next case report
         this.lastCaseOrder++;
