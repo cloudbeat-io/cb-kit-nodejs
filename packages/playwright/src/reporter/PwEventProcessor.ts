@@ -187,9 +187,9 @@ export class PwEventProcessor {
             cbCaseResult.context = {};
         }
         if (!cbCaseResult.context.resultData) {
-            cbCaseResult.context.resultData = {};
+            cbCaseResult.context.resultData = [];
         }
-        cbCaseResult.context.resultData[name] = data;
+        cbCaseResult.context.resultData.push({ name: data });
     }
 
     private setFailureReason(reason?: FailureReasonEnum, pwTest?: TestCase): void {
