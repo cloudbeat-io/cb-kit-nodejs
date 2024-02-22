@@ -103,7 +103,8 @@ export class PwEventProcessor {
         cbCaseResult.endTime = (new Date()).getTime();
         cbCaseResult.duration = cbCaseResult.endTime - cbCaseResult.startTime;
         cbCaseResult.reRunCount = pwResult.retry;
-
+        // note: this will not work for tests executed on multiple browsers...
+        this.cbRunResult.metadata!.browserName = pwTest.parent.project()!.name;
         // await this._sendIsRunningStatus(test, result);
         // increase order count for the next case report
         this.lastCaseOrder++;
@@ -186,9 +187,9 @@ export class PwEventProcessor {
             cbCaseResult.context = {};
         }
         if (!cbCaseResult.context.resultData) {
-            cbCaseResult.context.resultData = {};
+            cbCaseResult.context.resultData = [];
         }
-        cbCaseResult.context.resultData[name] = data;
+        cbCaseResult.context.resultData.push({ Name: name, Data: data });
     }
 
     private setFailureReason(reason?: FailureReasonEnum, pwTest?: TestCase): void {

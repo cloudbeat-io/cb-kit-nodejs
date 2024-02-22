@@ -1,6 +1,6 @@
 {
   "name": "@cloudbeat/playwright",
-  "version": "1.0.0-beta.2",
+  "version": "1.0.0-beta.5",
   "description": "CloudBeat Reporter for Playwright",
   "keywords": [
     "cloudbeat",
