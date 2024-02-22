@@ -27,7 +27,9 @@ export class CbRestApiClient {
     }
 
     protected _handleRequest = (config: InternalAxiosRequestConfig) => {
-        config.headers['Content-Type'] = 'application/json';
+        if (!config.headers['Content-Type'] && !config.headers['content-type']) {
+            config.headers['Content-Type'] = 'application/json';
+        }
         // TODO:
         //      Should add support for X-Api-Key header
         //      Should remove support for Bearer token (backend doesn't seem to support it?)
@@ -46,7 +48,7 @@ export class CbRestApiClient {
             }
 
             // append query string to the url
-            if (config.url?.endsWith('?') && config.url?.endsWith('&')) {
+            if (!config.url?.endsWith('?') && !config.url?.endsWith('&')) {
                 config.url += '?';
             }
             config.url += params.toString();
