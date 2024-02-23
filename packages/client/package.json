@@ -32,7 +32,7 @@
     "url": "https://gitlab.com/cloudbeat/cb-js-commons/"
   },
   "dependencies": {
-    "@cloudbeat/types": "^1.0.0-beta.2",
+    "@cloudbeat/types": "^1.0.2",
     "axios": "^1.6.7",
     "debug": "^4.3.4",
     "moment": "^2.29.4"
