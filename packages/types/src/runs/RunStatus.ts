@@ -7,16 +7,16 @@ export interface RunStatus {
     entityId: number;
     entityType: EntityTypeEnum;
     runName: string;
-    resultId: number;
+    resultId?: number;
     startTime: number;
     endTime?: number;
     duration?: number;
     status: RunStatusEnum;
-    progress: number;
+    progress?: number;
     statusLastUpdate: number;
     executingUserName: string;
     executingUserId: number;
-    projectName: string;
+    projectName?: string;
     projectId?: number;
     instances: RunInstanceStatus[];
 }

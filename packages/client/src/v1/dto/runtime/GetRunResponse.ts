@@ -25,7 +25,7 @@ export class GetRunDto {
     entityId?: number;
     entityType?: string;
     runName?: string;
-    resultId?: number | null;
+    resultId?: number;
     startTime?: string;
     endTime?: string | null;
     duration?: number | null;
@@ -53,23 +53,14 @@ export class GetRunDto {
         if (!this.runName) {
             throw new Error('runName is required');
         }
-        if (!this.resultId) {
-            throw new Error('resultId is required');
-        }
         if (!this.startTime) {
             throw new Error('startTime is required');
         }
         if (!this.duration) {
             throw new Error('duration is required');
         }
-        if (!this.progress) {
-            throw new Error('progress is required');
-        }
         if (!this.executingUserName) {
             throw new Error('executingUserName is required');
-        }
-        if (!this.projectName) {
-            throw new Error('projectName is required');
         }
         if (!this.executingUserId) {
             throw new Error('executingUserId is required');
@@ -86,13 +77,13 @@ export class GetRunDto {
         const newRun: RunStatus = {
             runId: this.runId,
             entityId: this.entityId,
-            entityType: EntityTypeEnum[parseInt(this.entityType, 10)] as any,
+            entityType: EntityTypeEnum[this.entityType as keyof typeof EntityTypeEnum],
             runName: this.runName,
             resultId: this.resultId,
             startTime: convertStringDateToEpoch(this.startTime) || 0,
             endTime: this.endTime ? convertStringDateToEpoch(this.endTime) : undefined,
             duration: this.duration,
-            status: RunStatusEnum[parseInt(this.status, 10)] as any,
+            status: RunStatusEnum[this.status as keyof typeof RunStatusEnum],
             progress: this.progress,
             statusLastUpdate: convertStringDateToEpoch(this.statusLastUpdate) || 0,
             executingUserName: this.executingUserName,
