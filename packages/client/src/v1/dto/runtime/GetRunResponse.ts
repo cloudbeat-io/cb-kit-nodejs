@@ -56,9 +56,6 @@ export class GetRunDto {
         if (!this.startTime) {
             throw new Error('startTime is required');
         }
-        if (!this.duration) {
-            throw new Error('duration is required');
-        }
         if (!this.executingUserName) {
             throw new Error('executingUserName is required');
         }
