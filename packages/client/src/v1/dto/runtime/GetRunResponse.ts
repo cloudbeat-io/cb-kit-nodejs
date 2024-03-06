@@ -27,15 +27,15 @@ export class GetRunDto {
     runName?: string;
     resultId?: number;
     startTime?: string;
-    endTime?: string | null;
-    duration?: number | null;
+    endTime?: string;
+    duration?: number;
     status?: string;
     progress?: number;
     statusLastUpdate?: string;
     executingUserName?: string;
     executingUserId?: number;
     projectName?: string;
-    projectId?: number | null;
+    projectId?: number;
     instances?: GetRunInstanceDto[];
 
     constructor(data: any) {
@@ -120,9 +120,9 @@ export class GetRunInstanceDto {
     }
 
     public toModel(): RunInstanceStatus {
-        if (!this.id) {
+        /*if (!this.id) {
             throw new Error('id is required');
-        }
+        }*/
         if (!this.runId) {
             throw new Error('runId is required');
         }
@@ -130,7 +130,7 @@ export class GetRunInstanceDto {
             throw new Error('locationName is required');
         }
         const newInstance: RunInstanceStatus = {
-            id: this.id,
+            id: this.id!,
             runId: this.runId,
             startTime: convertStringDateToEpoch(this.startTime) || 0,
             endTime: this.endTime ? convertStringDateToEpoch(this.endTime) : undefined,
@@ -167,14 +167,14 @@ export class GetRunCasesStatusJsonDto {
     }
 
     public toMap(): RunInstanceCaseStatus {
-        if (!this.id) {
+        /*if (!this.id) {
             throw new Error('id is required');
-        }
+        }*/
         if (!this.name) {
             throw new Error('name is required');
         }
         const newCaseStatus: RunInstanceCaseStatus = {
-            id: this.id,
+            id: this.id!,
             name: this.name,
             order: this.order,
             progress: this.progress,
