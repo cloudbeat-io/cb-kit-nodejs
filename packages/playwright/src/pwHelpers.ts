@@ -7,7 +7,6 @@ import { v4 as uuidv4 } from 'uuid';
 
 export function getPwSuiteFqn(pwSuite?: Suite): string {
     const { testDir } = pwSuite?.project() || {};
-    // const [, projectSuiteTitle, fileSuiteTitle, ...restOfTitles] = titlePath;
     const fqnParts: string[] = [];
     while (pwSuite) {
         // @ts-expect-error access to private property _type
@@ -94,7 +93,9 @@ export function createCbSuiteResult(pwSuite: Suite, cbParentSuite?: SuiteResult)
 
 function getRelativeLocation(filePath: string | undefined, testDir: string | undefined): string | undefined {
     if (testDir && filePath) {
-        return path.relative(testDir, filePath).split(path.sep).join('/');
+        const fqnSegments = path.relative(testDir, filePath).split(path.sep);
+        fqnSegments.unshift(testDir);
+        return fqnSegments.join('/');
     }
     return filePath;
 }
