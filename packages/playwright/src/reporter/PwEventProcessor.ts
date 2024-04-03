@@ -228,8 +228,8 @@ export class PwEventProcessor {
             if (pwAttachment.name === 'video') {
                 const cbAttachment: Attachment = {
                     id: uuidv4(),
-                    attachmentType: AttachmentTypeEnum.Video,
-                    attachmentSubType: AttachmentSubTypeEnum.Screencast,
+                    type: AttachmentTypeEnum.Video,
+                    subType: AttachmentSubTypeEnum.Screencast,
                     fileName: getAttachmentFileNameFromPath(pwAttachment.path),
                     filePath: pwAttachment.path,
                 };
@@ -238,8 +238,8 @@ export class PwEventProcessor {
             else if (pwAttachment.name === 'trace') {
                 const cbAttachment: Attachment = {
                     id: uuidv4(),
-                    attachmentType: AttachmentTypeEnum.Other,
-                    attachmentSubType: AttachmentSubTypeEnum.PlaywrightTrace,
+                    type: AttachmentTypeEnum.Other,
+                    subType: AttachmentSubTypeEnum.PlaywrightTrace,
                     fileName: getAttachmentFileNameFromPath(pwAttachment.path),
                     filePath: pwAttachment.path,
                 };

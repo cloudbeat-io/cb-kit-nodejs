@@ -8,6 +8,6 @@ export interface Attachment {
     displayName?: string;
     mimeType?: string;
     description?: string;
-    attachmentType: AttachmentTypeEnum;
-    attachmentSubType?: AttachmentSubTypeEnum;
+    type: AttachmentTypeEnum;
+    subType?: AttachmentSubTypeEnum;
 }

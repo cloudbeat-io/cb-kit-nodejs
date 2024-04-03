@@ -30,7 +30,7 @@
   },
   "dependencies": {
     "@playwright/test": "^1.34.1",
-    "@cloudbeat/types": "^1.0.2",
+    "@cloudbeat/types": "^1.0.4",
     "debug": "^4.3.4",
     "js-queue": "^2.0.2",
     "moment": "^2.29.4",
