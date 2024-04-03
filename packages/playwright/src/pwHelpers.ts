@@ -94,8 +94,10 @@ export function createCbSuiteResult(pwSuite: Suite, cbParentSuite?: SuiteResult)
 function getRelativeLocation(filePath: string | undefined, testDir: string | undefined): string | undefined {
     if (testDir && filePath) {
         const fqnSegments = path.relative(testDir, filePath).split(path.sep);
-        fqnSegments.unshift(testDir);
-        return fqnSegments.join('/');
+        const nativePathSegments = testDir.split(path.sep);
+        const testDirName = nativePathSegments[nativePathSegments.length-1];
+        fqnSegments.unshift(testDirName);
+        return fqnSegments.join('\\');
     }
     return filePath;
 }
