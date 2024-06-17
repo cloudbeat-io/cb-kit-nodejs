@@ -123,7 +123,7 @@ export function createCbCaseResult(pwCase: TestCase, cbParentSuite: SuiteResult)
         name: pwCase.title,
         startTime: (new Date().getTime()),
         fqn: `${cbParentSuite.fqn || ''}#${getTitleBasedFqn(pwCase.title)}`,
-        iterationNum: 1,
+        iterationNum: pwCase.repeatEachIndex + 1,
         location: getCodeLocation(pwCase.location, testDir),
         steps: [],
         _parent: cbParentSuite,
