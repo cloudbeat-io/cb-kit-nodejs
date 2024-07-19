@@ -1,4 +1,5 @@
 import { FailureReasonEnum } from '@cloudbeat/types';
+import { ConsoleMessage } from '@playwright/test';
 
 export class cb {
     public static setFailureReason(reason: FailureReasonEnum) {
@@ -11,6 +12,10 @@ export class cb {
 
     public static addOutputData(name: string, data: any) {
         sendToReporter('addOutputData', { name, data });
+    }
+
+    public static onConsole(message: ConsoleMessage) {
+        sendToReporter('addConsoleLog', { type: message.type(), message: message.text() });
     }
 }
 
