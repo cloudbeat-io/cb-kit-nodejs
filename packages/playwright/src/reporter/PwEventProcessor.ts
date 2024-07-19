@@ -149,11 +149,33 @@ export class PwEventProcessor {
                 case 'addOutputData':
                     this.addOutputData(data.name as string, data.data, pwTest);
                     break;
+                case 'addConsoleLog':
+                    this.addConsoleLog(data as any, pwTest);
+                    break;
             }
         }
         catch {
             this.addSystemConsoleLog(String(chunk));
         }
+    }
+
+    private addBrowserConsoleLog(message: string, level?: LogLevelEnum, pwTest?: TestCase): void {
+        if (!message || !pwTest) {
+            return;
+        }
+        if (!this.cbRunResult || !this.cbCaseCache.has(pwTest)) {
+            return;
+        }
+        const cbCaseResult = this.cbCaseCache.get(pwTest)!;
+        if (!cbCaseResult.logs) {
+            cbCaseResult.logs = [];
+        }
+        cbCaseResult.logs.push({
+            time: new Date().getTime(),
+            level: level || LogLevelEnum.INFO,
+            msg: message,
+            src: 'browser',
+        });
     }
 
     private addSystemConsoleLog(message: string, pwTest?: TestCase): void {
@@ -173,6 +195,27 @@ export class PwEventProcessor {
             msg: message,
             src: 'user',
         });
+    }
+
+    private addConsoleLog(logEntry: any, pwTest?: TestCase): void {
+        const { type, message } = logEntry;
+        let level = LogLevelEnum.INFO;
+        if (type) {
+            switch (type) {
+                case 'debug':
+                    level = LogLevelEnum.DEBUG;
+                    break;
+                case 'error':
+                    level = LogLevelEnum.Error;
+                    break;
+                case 'warning':
+                    level = LogLevelEnum.Warn;
+                    break;
+                default:
+                    level = LogLevelEnum.INFO;
+            }
+        }
+        this.addBrowserConsoleLog(message, level, pwTest);
     }
 
     private addOutputData(name: string, data: any, pwTest?: TestCase): void {
