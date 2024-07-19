@@ -414,9 +414,6 @@ export class PwEventProcessor {
         if (!process.env.CB_ACCOUNT_ID) {
             throw new Error('CB_ACCOUNT_ID is required');
         }
-        if (!process.env.CB_USER_ID) {
-            throw new Error('CB_USER_ID is required');
-        }
         if (!process.env.CB_LOCATION_ID) {
             throw new Error('CB_LOCATION_ID is required');
         }
@@ -424,7 +421,10 @@ export class PwEventProcessor {
         this.instanceId = process.env.CB_INSTANCE_ID;
         this.agentId = process.env.CB_AGENT_ID;
         this.accountId = parseInt(process.env.CB_ACCOUNT_ID, 10);
-        this.userId = parseInt(process.env.CB_USER_ID, 10);
+        // CB_USER_ID could be undefined if test was executed by scheduler
+        if (process.env.CB_USER_ID) {
+            this.userId = parseInt(process.env.CB_USER_ID, 10);
+        }
         this.locationId = process.env.CB_LOCATION_ID;
     }
 
