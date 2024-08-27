@@ -96,15 +96,12 @@ export class PwEventProcessor {
         // eslint-disable-next-line no-underscore-dangle
         const cbSuiteResult = cbCaseResult._parent;
         const { testDir } = pwTest.parent.project() || {};
-        // TODO: retrieve parent cb suite
-        cbSuiteResult.endTime = (new Date().getTime());
-        cbSuiteResult.duration = cbSuiteResult.endTime - cbSuiteResult.startTime;
         cbCaseResult.status = this._getResultStatusEnum(pwResult.status);
         cbCaseResult.endTime = (new Date()).getTime();
         cbCaseResult.duration = cbCaseResult.endTime - cbCaseResult.startTime;
         cbCaseResult.reRunCount = pwResult.retry;
         // note: this will not work for tests executed on multiple browsers...
-        this.cbRunResult.metadata!.browserName = pwTest.parent.project()!.name;
+        // this.cbRunResult.metadata!.browserName = pwTest.parent.project()!.name;
         // await this._sendIsRunningStatus(test, result);
         // increase order count for the next case report
         this.lastCaseOrder++;
@@ -113,6 +110,9 @@ export class PwEventProcessor {
         this.addAttachmentsToCase(cbCaseResult, pwResult.attachments);
 
         cbCaseResult.steps = this._getCbStepsFromPwSteps(pwResult.steps, testDir, failureScreenshot);
+
+        // update end-time of the parent suites + update status
+        this.endParentSuiteForCase(cbSuiteResult, cbCaseResult.status);
     }
 
     public onRunEnd(result: FullResult) {
@@ -150,12 +150,25 @@ export class PwEventProcessor {
                     this.addOutputData(data.name as string, data.data, pwTest);
                     break;
                 case 'addConsoleLog':
-                    this.addConsoleLog(data as any, pwTest);
+                    this.addConsoleLog(data , pwTest);
                     break;
             }
         }
         catch {
             this.addSystemConsoleLog(String(chunk));
+        }
+    }
+
+    private endParentSuiteForCase(cbSuiteResult: any, caseStatus: ResultStatusEnum) {
+        cbSuiteResult.endTime = (new Date().getTime());
+        cbSuiteResult.duration = cbSuiteResult.endTime - cbSuiteResult.startTime;
+        if (caseStatus === ResultStatusEnum.FAILED) {
+            cbSuiteResult.status = ResultStatusEnum.FAILED;
+        }
+        // eslint-disable-next-line no-underscore-dangle
+        if (cbSuiteResult._parent) {
+            // eslint-disable-next-line no-underscore-dangle
+            this.endParentSuiteForCase(cbSuiteResult._parent, caseStatus);
         }
     }
 
@@ -215,7 +228,7 @@ export class PwEventProcessor {
                     level = LogLevelEnum.INFO;
             }
         }
-        this.addBrowserConsoleLog(message, level, pwTest);
+        this.addBrowserConsoleLog(message as string, level, pwTest);
     }
 
     private addOutputData(name: string, data: any, pwTest?: TestCase): void {
@@ -299,6 +312,13 @@ export class PwEventProcessor {
 
     private removeInternalPropsFromSuites(suites: CbSuiteResult[]) {
         for (const suiteResult of suites) {
+            // @ts-expect-error access to private property _parent
+            // eslint-disable-next-line no-underscore-dangle
+            if (suiteResult._parent) {
+                // @ts-expect-error access to private property _parent
+                // eslint-disable-next-line no-underscore-dangle
+                delete suiteResult._parent;
+            }
             if (suiteResult.cases && suiteResult.cases.length) {
                 for (const caseResult of suiteResult.cases) {
                     // @ts-expect-error access to private property _parent
