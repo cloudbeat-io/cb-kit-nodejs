@@ -1,8 +1,8 @@
 import crypto from 'crypto';
 import path from 'path';
-import { CaseResult, StepResult, SuiteResult } from '@cloudbeat/types';
+import { CaseResult, ResultStatusEnum, StepResult, SuiteResult } from '@cloudbeat/types';
 import { FullProject } from '@playwright/test';
-import type { Location, Reporter, Suite, TestCase, TestError, TestResult, TestStep } from '@playwright/test/reporter';
+import type { Location, Suite, TestCase, TestResult, TestStep } from '@playwright/test/reporter';
 import { v4 as uuidv4 } from 'uuid';
 
 export function getPwSuiteFqn(pwSuite?: Suite): string {
@@ -45,6 +45,10 @@ export function getPwSuiteKey(pwSuite: Suite): string {
         }
         if (parentSuiteType === 'file') {
             keyParts.push(getRelativeLocation(parentSuite.location?.file, testDir)!);
+            const projectName = parentSuite.project()?.name;
+            if (projectName) {
+                keyParts.push(projectName);
+            }
         }
         else {
             keyParts.push(getTitleBasedFqn(parentSuite.title));
@@ -59,7 +63,10 @@ function getSuiteAttributes(pwProject?: FullProject): {[key: string]: any} {
         return {};
     }
     const attributes = {
-        pw: pwProject.use,
+        pw: {
+            projectName: pwProject.name,
+            ...pwProject.use,
+        },
         browserName: pwProject.use.browserName || pwProject.use.defaultBrowserType || pwProject.use.channel,
         resolution: pwProject.use.viewport,
     };
@@ -80,10 +87,12 @@ export function createCbSuiteResult(pwSuite: Suite, cbParentSuite?: SuiteResult)
         fqn: getPwSuiteFqn(pwSuite),
         iterationNum: 1,
         location: getRelativeLocation(pwSuite.location?.file, testDir),
-        testAttributes: pwSuiteType !== 'file' ? getSuiteAttributes(project) : {},
+        testAttributes: pwSuiteType === 'file' ? getSuiteAttributes(project) : {},
+        status: ResultStatusEnum.PASSED,
         suites: [],
         cases: [],
         hooks: [],
+        _parent: cbParentSuite,
     };
     if (cbParentSuite) {
         cbParentSuite.suites.push(newSuite);
