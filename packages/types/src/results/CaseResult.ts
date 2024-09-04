@@ -1,4 +1,5 @@
 import { Attachment } from './Attachment';
+import { FailureResult } from './FailureResult';
 import { LogResult } from './LogResult';
 import { ResultStatusEnum } from './ResultStatusEnum';
 import { StepResult } from './StepResult';
@@ -14,6 +15,7 @@ export interface CaseResult {
     iterationNum: number;
     order?: number;
     status?: ResultStatusEnum;
+    failure?: FailureResult;
     failureReasonId?: number;
     reRunCount?: number;
     context?: any;
