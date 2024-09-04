@@ -1,4 +1,3 @@
-import fs from 'fs';
 import path from 'path';
 import {
     Attachment,
@@ -110,6 +109,9 @@ export class PwEventProcessor {
         this.addAttachmentsToCase(cbCaseResult, pwResult.attachments);
 
         cbCaseResult.steps = this._getCbStepsFromPwSteps(pwResult.steps, testDir, failureScreenshot);
+        if (pwResult.status === 'failed' && this._hasNoFailedSteps(cbCaseResult.steps)) {
+            cbCaseResult.failure = this._getCbFailureFromPwError(pwResult);
+        }
 
         // update end-time of the parent suites + update status
         this.endParentSuiteForCase(cbSuiteResult, cbCaseResult.status);
@@ -390,15 +392,30 @@ export class PwEventProcessor {
         });*/
     }
 
+    private _hasNoFailedSteps(steps?: CbStepResult[]): boolean {
+        if (!steps || !steps.length) {
+            return true;
+        }
+        for (const stepResult of steps) {
+            if (stepResult.status === ResultStatusEnum.FAILED) {
+                return false;
+            }
+            if (!this._hasNoFailedSteps(stepResult.steps)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     private _getCbStepsFromPwSteps(steps: TestStep[], testDir?: string, failureScreenshot?: { name: string; path?: string; body?: Buffer; contentType: string }): CbStepResult[] {
         return steps.filter(s => REPORT_PW_STEP_CATEGORIES.includes(s.category)).map((pwStep: TestStep) => {
             const childSteps = this._getCbStepsFromPwSteps(pwStep.steps, testDir, pwStep.error ? undefined : failureScreenshot);
 
             const childStepFailed = childSteps.some((x) => x.status === ResultStatusEnum.FAILED);
 
-            return {
+            const cbStep: CbStepResult = {
                 id: uuidv4(),
-                _category: pwStep.category,
+                // _category: pwStep.category,
                 startTime: new Date(pwStep.startTime).getTime(),
                 endTime: new Date(pwStep.startTime).getTime() + pwStep.duration,
                 duration: pwStep.duration,
@@ -406,21 +423,24 @@ export class PwEventProcessor {
                 location: pwStep.location ? getCodeLocation(pwStep.location, testDir) : undefined,
                 type: this._getCbStepTypeFromPwCategory(pwStep.category),
                 status: pwStep.error || childStepFailed ? ResultStatusEnum.FAILED : ResultStatusEnum.PASSED,
-                failure: this._getCbFailureFromPwError(pwStep.error),
-                screenShot: pwStep.error && failureScreenshot ? this._getBase64FromScreeenshot(failureScreenshot) : undefined,
+                failure: this._getCbFailureFromPwError(pwStep),
+                // FIXME: we can probably need to convert the inline screenshot to an attachment to reduce the payload size
+                // screenShot: pwStep.error && failureScreenshot ? this._getBase64FromScreeenshot(failureScreenshot) : undefined,
                 steps: childSteps,
+                attachments: [],
             };
+            if (pwStep.error && failureScreenshot) {
+                const cbAttachment: Attachment = {
+                    id: uuidv4(),
+                    type: AttachmentTypeEnum.Screenshot,
+                    subType: AttachmentSubTypeEnum.Screenshot,
+                    fileName: getAttachmentFileNameFromPath(failureScreenshot.path!),
+                    filePath: failureScreenshot.path,
+                };
+                cbStep.attachments!.push(cbAttachment);
+            }
+            return cbStep;
         });
-    }
-
-    private _getBase64FromScreeenshot(screenshot: { name: string; path?: string; body?: Buffer; contentType: string }): string | undefined {
-        if (screenshot.body) {
-            return screenshot.body.toString('base64');
-        }
-        else if (screenshot.path) {
-            return fs.readFileSync(screenshot.path, 'base64');
-        }
-        return undefined;
     }
 
     private _getCbStepTypeFromPwCategory(category: string): StepTypeEnum {
@@ -435,10 +455,11 @@ export class PwEventProcessor {
         return StepTypeEnum.GENERAL;
     }
 
-    private _getCbFailureFromPwError(error?: TestError): CbFailureResult | undefined {
-        if (!error) {
+    private _getCbFailureFromPwError(pwStepOrTest?: TestStep | TestResult): CbFailureResult | undefined {
+        if (!pwStepOrTest || !pwStepOrTest.error) {
             return undefined;
         }
+        const { error } = pwStepOrTest;
         const message = error.message && stripAscii(error.message);
         let stack = error.stack && stripAscii(error.stack);
         if (stack && message && stack.startsWith(message)) {
@@ -446,10 +467,33 @@ export class PwEventProcessor {
             stack = stack.replaceAll(this.rootDir as string, '');
         }
         return {
-            type: 'Error',
+            type: this._getCbFailureTypeForPwError(pwStepOrTest),
+            subtype: this._getPwErrorType(error),
+            snippet: error.snippet,
             message: message,
-            data: stack,
+            stacktrace: stack,
         };
+    }
+
+    private _getCbFailureTypeForPwError(pwStepOrCase: TestStep | TestResult): string {
+        if ('category' in pwStepOrCase && pwStepOrCase.category === 'expect') {
+            return 'ASSERT_ERROR';
+        }
+        else if (pwStepOrCase.error?.message?.indexOf('TimeoutError:') === 0) {
+            return 'TIMEOUT_ERROR';
+        }
+        else if ('status' in pwStepOrCase && pwStepOrCase.status === 'timedOut') {
+            return 'TIMEOUT_ERROR';
+        }
+        return 'GENERAL_ERROR';
+    }
+
+    private _getPwErrorType(error: TestError): string {
+        const matches = error.message?.match(/^(.+?):/);
+        if (!matches || matches.length < 2) {
+            return 'Error';
+        }
+        return matches[1];
     }
 
     private _getResultStatusEnum(status: 'passed' | 'failed' | 'timedout' | 'interrupted' | TestStatus): ResultStatusEnum {

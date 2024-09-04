@@ -1,3 +1,4 @@
+import { Attachment } from './Attachment';
 import { FailureResult } from './FailureResult';
 import { ResultStatusEnum } from './ResultStatusEnum';
 import { StepTypeEnum } from './StepTypeEnum';
@@ -24,6 +25,7 @@ export interface StepResult {
     failure?: FailureResult;
     stats?: {[key: string]: string | number};
     steps?: StepResult[];
+    attachments?: Attachment[];
     extra?: {
         http?: HttpStepExtra;
     };

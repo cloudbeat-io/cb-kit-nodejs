@@ -4,5 +4,8 @@ export interface FailureResult {
     message?: string;
     line?: number;
     data?: string;
+    stacktrace?: string;
+    location?: string;
+    snippet?: string;
     isFatal?: boolean;
 }
