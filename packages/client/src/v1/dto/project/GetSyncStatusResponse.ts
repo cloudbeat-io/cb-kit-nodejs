@@ -23,6 +23,7 @@ export class ProjectSyncStatus {
     commitHash?: string;
     syncDate?: string;
     syncStatus?: string;
+    message?: string;
 
     constructor(data: any) {
         Object.assign<ProjectSyncStatus, any>(this, data);

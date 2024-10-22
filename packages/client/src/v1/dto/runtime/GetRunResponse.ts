@@ -120,9 +120,6 @@ export class GetRunInstanceDto {
     }
 
     public toModel(): RunInstanceStatus {
-        /*if (!this.id) {
-            throw new Error('id is required');
-        }*/
         if (!this.runId) {
             throw new Error('runId is required');
         }
@@ -167,9 +164,6 @@ export class GetRunCasesStatusJsonDto {
     }
 
     public toMap(): RunInstanceCaseStatus {
-        /*if (!this.id) {
-            throw new Error('id is required');
-        }*/
         if (!this.name) {
             throw new Error('name is required');
         }
