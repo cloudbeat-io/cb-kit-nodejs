@@ -215,7 +215,7 @@ export class PwEventProcessor {
 
     private addConsoleLog(logEntry: any, pwTest?: TestCase): void {
         const { type, message } = logEntry;
-        this.addBrowserConsoleLog(message as string, type, pwTest);
+        this.addBrowserConsoleLog(message as string, type as string, pwTest);
     }
 
     private addOutputData(name: string, data: any, pwTest?: TestCase): void {
