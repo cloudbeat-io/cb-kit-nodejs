@@ -29,12 +29,12 @@
     "url": "https://gitlab.com/cloudbeat/cb-kit-nodejs/"
   },
   "dependencies": {
-    "@playwright/test": "^1.34.1",
-    "@cloudbeat/types": "^1.0.5",
+    "@playwright/test": "^1.41.1",
+    "@cloudbeat/types": "^1.0.6",
     "debug": "^4.3.4",
     "js-queue": "^2.0.2",
-    "moment": "^2.29.4",
-    "socket.io-client": "^4.7.4",
+    "moment": "^2.30.1",
+    "socket.io-client": "^4.7.5",
     "uuid": "^9.0.1"
   },
   "scripts": {

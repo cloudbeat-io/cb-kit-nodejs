@@ -29,9 +29,9 @@
     "url": "https://gitlab.com/cloudbeat/cb-js-commons/"
   },
   "dependencies": {
-    "@cloudbeat/types": "^1.0.0-beta.5",
+    "@cloudbeat/types": "^1.0.6",
     "debug": "^4.3.4",
-    "moment": "^2.29.4"
+    "moment": "^2.30.1"
   },
   "scripts": {
     "build": "npm run clean && npm run compile",
