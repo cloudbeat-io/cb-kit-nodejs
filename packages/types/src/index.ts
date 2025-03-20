@@ -4,7 +4,6 @@ export * from './common/EntityTypeEnum';
 // Results
 export * from './results/CaseResult';
 export * from './results/FailureResult';
-export * from './results/LogLevelEnum';
 export * from './results/LogResult';
 export * from './results/ResultStatusEnum';
 export * from './results/FailureReasonEnum';
