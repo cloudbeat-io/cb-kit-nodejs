@@ -9,7 +9,6 @@ import {
     SuiteResult as CbSuiteResult,
     TestResult as CbTestResult,
     FailureReasonEnum,
-    LogLevelEnum,
     ResultStatusEnum,
     StepTypeEnum,
 } from '@cloudbeat/types';
@@ -29,6 +28,8 @@ const REPORT_PW_STEP_CATEGORIES = [
     'pw:api',
     'test.step',
 ];
+
+const UNKNOWN_LOG_LEVEL = '-unknown-';
 
 export class PwEventProcessor {
     // CB run details
@@ -174,7 +175,7 @@ export class PwEventProcessor {
         }
     }
 
-    private addBrowserConsoleLog(message: string, level?: LogLevelEnum, pwTest?: TestCase): void {
+    private addBrowserConsoleLog(message: string, level?: string, pwTest?: TestCase): void {
         if (!message || !pwTest) {
             return;
         }
@@ -187,7 +188,7 @@ export class PwEventProcessor {
         }
         cbCaseResult.logs.push({
             time: new Date().getTime(),
-            level: level || LogLevelEnum.INFO,
+            level: level || UNKNOWN_LOG_LEVEL,
             msg: message,
             src: 'browser',
         });
@@ -206,7 +207,7 @@ export class PwEventProcessor {
         }
         cbCaseResult.logs.push({
             time: new Date().getTime(),
-            level: LogLevelEnum.INFO,
+            level: UNKNOWN_LOG_LEVEL,
             msg: message,
             src: 'user',
         });
@@ -214,23 +215,7 @@ export class PwEventProcessor {
 
     private addConsoleLog(logEntry: any, pwTest?: TestCase): void {
         const { type, message } = logEntry;
-        let level = LogLevelEnum.INFO;
-        if (type) {
-            switch (type) {
-                case 'debug':
-                    level = LogLevelEnum.DEBUG;
-                    break;
-                case 'error':
-                    level = LogLevelEnum.Error;
-                    break;
-                case 'warning':
-                    level = LogLevelEnum.Warn;
-                    break;
-                default:
-                    level = LogLevelEnum.INFO;
-            }
-        }
-        this.addBrowserConsoleLog(message as string, level, pwTest);
+        this.addBrowserConsoleLog(message as string, type, pwTest);
     }
 
     private addOutputData(name: string, data: any, pwTest?: TestCase): void {
