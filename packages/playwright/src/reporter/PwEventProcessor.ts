@@ -243,7 +243,7 @@ export class PwEventProcessor {
             return;
         }
         const cbCaseResult = this.cbCaseCache.get(pwTest)!;
-        // cbCaseResult.failureReasonId = FailureReasonEnum[reason];
+        cbCaseResult.failureReasonId = reason;
     }
 
     private addTestAttribute(name: string, value: any, pwTest?: TestCase): void {
