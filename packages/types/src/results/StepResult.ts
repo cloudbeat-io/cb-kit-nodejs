@@ -8,6 +8,15 @@ export interface HttpStepExtra {
     response: any;
 }
 
+export interface AssertStepExtra {
+    actual: any;
+    expected: any;
+}
+
+export interface GherkinStepExtra {
+    type: 'GIVEN' | 'WHEN' | 'THEN';
+}
+
 export interface StepResult {
     id: string;
     startTime?: number;
@@ -28,5 +37,7 @@ export interface StepResult {
     attachments?: Attachment[];
     extra?: {
         http?: HttpStepExtra;
+        gherkin?: GherkinStepExtra;
+        assert?: AssertStepExtra;
     };
 }

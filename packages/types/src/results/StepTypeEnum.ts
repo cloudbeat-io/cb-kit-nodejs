@@ -4,5 +4,6 @@ export enum StepTypeEnum {
     TRANSACTION = 'transaction',
     HOOK = 'hook',
     ASSERTION = 'assert',
-    HTTP = 'http'
+    HTTP = 'http',
+    GHERKIN = 'gherkin',
 }

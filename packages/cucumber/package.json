@@ -1,9 +1,11 @@
 {
-  "name": "@cloudbeat/types",
-  "version": "1.0.7",
-  "description": "CloudBeat API data types",
+  "name": "@cloudbeat/cucumber",
+  "version": "1.0.0-beta.1",
+  "description": "CloudBeat Test Reporting Kit for Cucumber.js",
   "keywords": [
-    "cloudbeat"
+    "cloudbeat",
+    "cucumber",
+    "test reporting"
   ],
   "author": {
     "name": "CBNR Cloud Solutions LTD",
@@ -16,21 +18,17 @@
   "main": "out/index",
   "types": "out/index",
   "directories": {
-    "lib": "out",
+    "lib": "lib",
     "test": "__tests__"
   },
   "files": [
     "out"
   ],
-  "exports": {
-    ".": "./out/index.js"
-  },
   "repository": {
     "type": "git",
-    "url": "https://gitlab.com/cloudbeat/cb-kit-nodejs/"
+    "url": "git+https://github.com/cloudbeat-io/cb-kit-nodejs.git"
   },
   "scripts": {
-    "test": "echo \"Error: run tests from root\" && exit 1",
     "build": "npm run clean && npm run compile",
     "compile": "tsc -b",
     "lint": "eslint ./src --ext .ts",
@@ -39,5 +37,18 @@
   "publishConfig": {
     "access": "public",
     "registry": "https://registry.npmjs.org/"
+  },
+  "peerDependencies": {
+    "@cucumber/cucumber": "^12.0.0"
+  },
+  "dependencies": {
+    "@cloudbeat/types": "^1.0.7",
+    "debug": "^4.3.4",
+    "moment": "^2.30.1"
+  },
+  "devDependencies": {
+    "@cucumber/cucumber": "^12.0.0",
+    "@types/node": "^24.0.13",
+    "typescript": "^5.8.3"
   }
 }
