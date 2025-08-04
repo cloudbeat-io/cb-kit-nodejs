@@ -9,7 +9,17 @@ import {
 import { Formatter } from '@cucumber/cucumber';
 import StepDefinition from '@cucumber/cucumber/lib/models/step_definition';
 import { Attachment, Envelope, GherkinDocument, Pickle, ReporterOptions, TestCase, TestCaseFinished, TestCaseStarted, TestRunFinished, TestRunHookStarted, TestRunStarted, TestStats, TestStepFinished, TestStepStarted } from './types';
-import { addPlaywrightStepsFromAttachments, determineTestCaseStatus, generateId, generateResultFile, getFailureFromException, getFailureFromMessage, getGherkinStepExtraType, getResultFilePath } from './utils';
+import {
+    addAttachmentsOnTestCaseFinished,
+    addPlaywrightStepsAndScreenshotFromAttachments,
+    determineTestCaseStatus,
+    generateId,
+    generateResultFile,
+    getFailureFromException,
+    getFailureFromMessage,
+    getGherkinStepExtraType,
+    getResultFilePath,
+} from './utils';
 
 class CbCucumberReporter extends Formatter {
     private readonly options: ReporterOptions;
@@ -29,6 +39,8 @@ class CbCucumberReporter extends Formatter {
     private startedCbCaseMap: Map<string, CbCaseResult> = new Map();
     private startedCbStepMap: Map<string, CbStepResult> = new Map();
     private attachmentsByTestStepIdMap: Map<string, any> = new Map();
+    private attachmentsByTestCaseIdMap: Map<string, any> = new Map();
+    private testCaseIterationCounter: Map<string, number> = new Map();
     private runId?: string;
     private instanceId?: string;
     private agentId?: string;
@@ -108,13 +120,7 @@ class CbCucumberReporter extends Formatter {
             if ((envelope as any).meta || (envelope as any).source || (envelope as any).hook || (envelope as any).attachment) {
                 return;
             }
-            console.log('Other envelope', envelope);
         }
-    }
-
-    private onTestRunHookStarted(testRunHookStarted: TestRunHookStarted) {
-        console.log('testRunHookStarted', testRunHookStarted);
-        process.exit(0);
     }
 
     private onTestCase(testCase: TestCase) {
@@ -151,12 +157,19 @@ class CbCucumberReporter extends Formatter {
     }
 
     private onAttachment(attachment: Attachment) {
-        const { testStepId } = attachment;
+        const { testStepId, testCaseStartedId } = attachment;
         if (testStepId) {
             if (!this.attachmentsByTestStepIdMap.has(testStepId)) {
                 this.attachmentsByTestStepIdMap.set(testStepId, []);
             }
             const attachments = this.attachmentsByTestStepIdMap.get(testStepId);
+            attachments.push(attachment);
+        }
+        if (testCaseStartedId) {
+            if (!this.attachmentsByTestCaseIdMap.has(testCaseStartedId)) {
+                this.attachmentsByTestCaseIdMap.set(testCaseStartedId, []);
+            }
+            const attachments = this.attachmentsByTestCaseIdMap.get(testCaseStartedId);
             attachments.push(attachment);
         }
     }
@@ -201,12 +214,20 @@ class CbCucumberReporter extends Formatter {
             return;
         }
         this.startedTestCaseMap.set(testCaseStarted.id, testCaseStarted);
+        const fqn = `${pickle.uri}:${pickle.name}`;
+        // retrieve or update iterations counter
+        let iterationNum = this.testCaseIterationCounter.get(fqn) || 0;
+        // if this is a retry run, keep the iteration number same
+        if (!testCaseStarted.attempt) {
+            iterationNum++;
+        }
+        this.testCaseIterationCounter.set(fqn, iterationNum);
         const cbCaseResult: CbCaseResult = {
             id: generateId(),
             name: pickle.name,
             startTime: (new Date()).getTime(),
-            fqn: `${pickle.uri}:${pickle.name}`,
-            iterationNum: 1,
+            fqn,
+            iterationNum,
             reRunCount: testCaseStarted.attempt,
             steps: [],
         };
@@ -258,6 +279,14 @@ class CbCucumberReporter extends Formatter {
         // Adjust parent suite endTime and duration
         cbParentSuite.endTime = cbCaseResult.endTime;
         cbParentSuite.duration = cbParentSuite.endTime - cbParentSuite.startTime;
+        // Add screenshots and PW events that were added post-step-finished
+        const attachments = this.attachmentsByTestCaseIdMap.get(testCaseFinished.testCaseStartedId);
+        if (attachments) {
+            addAttachmentsOnTestCaseFinished(
+                testCaseFinished.testCaseStartedId, cbCaseResult, this.startedCbStepMap, attachments);
+        }
+        // Free up memory
+        this.attachmentsByTestCaseIdMap.delete(testCaseFinished.testCaseStartedId);
         const cukeResult = testCaseFinished.result;
         if (cukeResult) {
             cbCaseResult.status = cukeResult.status === 'FAILED' ? ResultStatusEnum.FAILED : ResultStatusEnum.PASSED;
@@ -332,12 +361,11 @@ class CbCucumberReporter extends Formatter {
             return;
         }
         const attachments = this.attachmentsByTestStepIdMap.get(testStepId);
-        // console.log('attachments', attachments);
         cbStepResult.endTime = (new Date()).getTime();
         cbStepResult.duration = cbStepResult.endTime - cbStepResult.startTime!;
         cbStepResult.status = ResultStatusEnum.PASSED;
         // Add additional steps if provided in the attachments (like in case of Playwright integration)
-        addPlaywrightStepsFromAttachments(cbStepResult, attachments);
+        addPlaywrightStepsAndScreenshotFromAttachments(cbStepResult, attachments);
         // Determine step status
         if (testStepResult && testStepResult.status === 'FAILED') {
             cbStepResult.status = ResultStatusEnum.FAILED;
