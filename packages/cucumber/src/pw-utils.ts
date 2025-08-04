@@ -3,7 +3,7 @@ import { World } from '@cucumber/cucumber';
 // Track methods configuration (should match reporter config)
 const CAPTURE_METHODS = [
     'goto', 'click', 'fill', 'type', 'press', 'waitForSelector',
-    'waitForTimeout', 'screenshot', 'evaluate', 'locator',
+    'waitForTimeout', 'evaluate', 'locator',
     'getByText', 'getByRole', 'getByTestId', 'getByPlaceholder',
     'selectOption', 'check', 'uncheck', 'hover', 'focus', 'blur',
     'waitFor', 'getAttribute',
@@ -159,6 +159,14 @@ function createLocatorProxy(locator: any, selector: string, world: World): any {
     });
 }
 
+async function takeScreenshot(page: any): Promise<string | undefined> {
+    try {
+        return await page?.screenshot();
+    }
+    catch (e: any) {
+        return undefined;
+    }
+}
 function attachEvent(world: World, event: any): void {
     try {
         const jsonData = JSON.stringify(event);
