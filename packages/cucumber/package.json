@@ -1,6 +1,6 @@
 {
   "name": "@cloudbeat/cucumber",
-  "version": "1.0.0-beta.4",
+  "version": "1.0.0-beta.5",
   "description": "CloudBeat Test Reporting Kit for Cucumber.js",
   "keywords": [
     "cloudbeat",
