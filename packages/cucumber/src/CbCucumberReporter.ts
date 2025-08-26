@@ -49,6 +49,7 @@ class CbCucumberReporter extends Formatter {
     constructor(options: ReporterOptions) {
         super(options);
 
+        console.log('ℹ️ CbCucumberReporter - constructor');
         this.options = options;
         // Check if we are running inside CB agent
         if (process.env.CB_AGENT
@@ -57,6 +58,7 @@ class CbCucumberReporter extends Formatter {
             && (options.instanceId || process.env.CB_INSTANCE_ID)
             && (options.agentId || process.env.CB_AGENT_ID)
         ) {
+            console.log('ℹ️ CbCucumberReporter - start initializing');
             this.runId = options.runId || process.env.CB_RUN_ID;
             this.instanceId = options.instanceId || process.env.CB_INSTANCE_ID;
             this.agentId = options.agentId || process.env.CB_AGENT_ID;
@@ -74,6 +76,7 @@ class CbCucumberReporter extends Formatter {
                 },
             };
             this.setupEventListeners();
+            console.log('ℹ️ CbCucumberReporter - initialized');
         }
     }
 
@@ -124,6 +127,7 @@ class CbCucumberReporter extends Formatter {
     }
 
     private onTestCase(testCase: TestCase) {
+        console.log('ℹ️ onTestCase');
         this.acceptedPickleIds.add(testCase.pickleId);
         this.parsedTestCaseMap.set(testCase.id, testCase);
     }
@@ -175,11 +179,13 @@ class CbCucumberReporter extends Formatter {
     }
 
     private onTestRunStarted(testRunStarted: TestRunStarted): void {
+        console.log('ℹ️ onTestRunStarted');
         // Override startTime, as the original one is incorrect due to object being initialized in the constructor
         this.cbTestResult!.startTime = (new Date()).getTime();
     }
 
     private onTestRunFinished(testRunFinished: TestRunFinished): void {
+        console.log('ℹ️ onTestRunFinished');
         if (!this.cbTestResult) {
             return;
         }
@@ -201,6 +207,7 @@ class CbCucumberReporter extends Formatter {
     }
 
     private onTestCaseStarted(testCaseStarted: TestCaseStarted): void {
+        console.log('ℹ️ onTestCaseStarted');
         const testCase = this.parsedTestCaseMap.get(testCaseStarted.testCaseId);
         if (!testCase) {
             return;
@@ -247,6 +254,7 @@ class CbCucumberReporter extends Formatter {
     }
 
     private onTestCaseFinished(testCaseFinished: TestCaseFinished): void {
+        console.log('ℹ️ onTestCaseStarted');
         const cbCaseResult = this.startedCbCaseMap.get(testCaseFinished.testCaseStartedId);
         if (!cbCaseResult) {
             return;
