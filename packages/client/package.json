@@ -33,7 +33,7 @@
   },
   "dependencies": {
     "@cloudbeat/types": "^1.0.6",
-    "axios": "^1.6.7",
+    "axios": "^0.30.2",
     "debug": "^4.3.4",
     "moment": "^2.30.1"
   },
