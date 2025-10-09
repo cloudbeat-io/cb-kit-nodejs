@@ -85,6 +85,7 @@ export class PwEventProcessor {
         const cbParentSuite = this.getParentCbSuite(pwTest.parent);
         const newCbCase = createCbCaseResult(pwTest, cbParentSuite);
         this.cbCaseCache.set(pwTest, newCbCase);
+        this.cbClient.onCaseStart(newCbCase, cbParentSuite);
     }
 
     public onTestEnd(pwTest: TestCase, pwResult: TestResult) {
@@ -94,7 +95,7 @@ export class PwEventProcessor {
         const cbCaseResult = this.cbCaseCache.get(pwTest)!;
         // @ts-expect-error access to private property _parent
         // eslint-disable-next-line no-underscore-dangle
-        const cbSuiteResult = cbCaseResult._parent;
+        const cbSuiteResult = cbCaseResult._parent as CbSuiteResult;
         const { testDir } = pwTest.parent.project() || {};
         cbCaseResult.status = this._getResultStatusEnum(pwResult.status);
         cbCaseResult.endTime = (new Date()).getTime();
@@ -116,6 +117,8 @@ export class PwEventProcessor {
 
         // update end-time of the parent suites + update status
         this.endParentSuiteForCase(cbSuiteResult, cbCaseResult.status);
+
+        this.cbClient.onCaseEnd(cbCaseResult, cbSuiteResult);
     }
 
     public onRunEnd(result: FullResult) {
@@ -126,6 +129,7 @@ export class PwEventProcessor {
         this.cbRunResult.status = this._getResultStatusEnum(result.status);
         this.cbRunResult.duration = this.cbRunResult.endTime - this.cbRunResult.startTime;
         this.removeInternalPropsFromResult();
+        this.reportOnSuiteEnd();
         this.cbClient.onRunEnd(this.cbRunResult);
     }
 
@@ -160,6 +164,12 @@ export class PwEventProcessor {
         catch {
             this.addSystemConsoleLog(String(chunk));
         }
+    }
+
+    private reportOnSuiteEnd() {
+        this.cbSuiteCache.forEach(cbSuite => {
+            this.cbClient.onSuiteEnd(cbSuite);
+        });
     }
 
     private endParentSuiteForCase(cbSuiteResult: any, caseStatus: ResultStatusEnum) {
@@ -338,6 +348,8 @@ export class PwEventProcessor {
             this.cbRunResult?.suites.push(cbSuite);
         }
         this.cbSuiteCache.set(suiteKey, cbSuite);
+        this.cbClient.onSuiteStart(cbSuite);
+
         return cbSuite;
     }
 

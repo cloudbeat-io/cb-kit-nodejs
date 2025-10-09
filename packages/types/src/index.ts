@@ -21,3 +21,5 @@ export * from './runs/RunStatusEnum';
 export * from './runs/RunStatusInfo';
 export * from './runs/RunStatus';
 export * from './runs/RunInstanceStatus';
+export * from './runs/CaseStatusUpdateReq';
+export * from './runs/SuiteStatusUpdateReq';

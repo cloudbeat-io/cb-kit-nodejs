@@ -1,4 +1,4 @@
-import { RunStatusInfo, TestResult } from '@cloudbeat/types';
+import { CaseStatusUpdateReq, RunStatusInfo, SuiteStatusUpdateReq, TestResult } from '@cloudbeat/types';
 import Debug from 'debug';
 import { ApiBaseClientV2 } from './ApiBaseClientV2';
 
@@ -32,6 +32,28 @@ export class RuntimeApi extends ApiBaseClientV2 {
         }
         catch (e: any) {
             console.error('Failed to update run status', e);
+        }
+    }
+
+    // runtime/run/{runId}/instance/{instanceId}/case/status
+    public async updateCaseStatus(status: CaseStatusUpdateReq) {
+        const path = `/runtime/run/${status.runId}/instance/${status.instanceId}/case/status`;
+        try {
+            await this.instance.post(path, status);
+        }
+        catch (e: any) {
+            console.error('Failed to update case runtime status', e);
+        }
+    }
+
+    // runtime/run/{runId}/instance/{instanceId}/suite/status
+    public async updateSuiteStatus(status: SuiteStatusUpdateReq) {
+        const path = `/runtime/run/${status.runId}/instance/${status.instanceId}/suite/status`;
+        try {
+            await this.instance.post(path, status);
+        }
+        catch (e: any) {
+            console.error('Failed to update suite runtime status', e);
         }
     }
 }

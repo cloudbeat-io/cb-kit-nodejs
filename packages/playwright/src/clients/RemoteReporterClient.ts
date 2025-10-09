@@ -20,10 +20,18 @@ export class RemoteReporterClient implements CbReporterClient {
         throw new Error('Method not implemented.');
     }
 
-    onCaseStart(cbCase: CaseResult): void {
+    onSuiteStart(cbSuite: SuiteResult): void {
 
     }
-    onCaseEnd(cbCase: CaseResult): void {
+
+    onSuiteEnd(cbSuite: SuiteResult): void {
+
+    }
+
+    onCaseStart(cbCase: CaseResult, cbParentSuite: SuiteResult): void {
+
+    }
+    onCaseEnd(cbCase: CaseResult, cbParentSuite: SuiteResult): void {
 
     }
 

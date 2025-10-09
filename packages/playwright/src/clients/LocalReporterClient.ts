@@ -1,13 +1,25 @@
-import { CaseResult, StepResult, SuiteResult, TestResult } from '@cloudbeat/types';
+import { v2 } from '@cloudbeat/client';
+import { CaseResult, ResultStatusEnum, RunStatusEnum, StepResult, SuiteResult, TestResult } from '@cloudbeat/types';
 import { io, Socket } from 'socket.io-client';
 import { CbReporterClient } from './CbReporterClient';
+import { FRAMEWORK_NAME, LANGUAGE_NAME } from '../const';
 const Queue = require('js-queue');
 
 export class LocalReporterClient implements CbReporterClient {
     private socket?: Socket;
     private queue?: any;
+    private cbApiClient?: v2.RuntimeApi;
+    private runId?: string;
+    private instanceId?: string;
 
     constructor() {
+        const apiUrl = process.env.CB_TEST_MONITOR_URL;
+        const apiToken = process.env.CB_TEST_MONITOR_TOKEN;
+        this.runId = process.env.CB_RUN_ID;
+        this.instanceId = process.env.CB_INSTANCE_ID;
+        if (apiUrl && apiToken && this.runId && this.instanceId) {
+            this.cbApiClient = new v2.RuntimeApi(apiUrl, apiToken);
+        }
     }
 
     connect(): void {
@@ -38,11 +50,83 @@ export class LocalReporterClient implements CbReporterClient {
         this.queue.add(this.getEventEmitter('run:end', result));
     }
 
-    onCaseStart(cbCase: CaseResult): void {
-        // this.queue.add(this.getEventPayload('case:start', cbCase));
+    onSuiteStart(cbSuite: SuiteResult): void {
+        if (!this.cbApiClient) {
+            return;
+        }
+        this.cbApiClient.updateSuiteStatus({
+            timestamp: new Date().getTime(),
+            runId: this.runId!,
+            instanceId: this.instanceId!,
+            id: cbSuite.id,
+            fqn: cbSuite.fqn!,
+            name: cbSuite.name,
+            startTime: cbSuite.startTime,
+            runStatus: RunStatusEnum.Running,
+            framework: FRAMEWORK_NAME,
+            language: LANGUAGE_NAME,
+        });
     }
-    onCaseEnd(cbCase: CaseResult): void {
-        // this.queue.add(this.getEventPayload('case:end', cbCase));
+
+    onSuiteEnd(cbSuite: SuiteResult): void {
+        if (!this.cbApiClient) {
+            return;
+        }
+        this.cbApiClient.updateSuiteStatus({
+            timestamp: new Date().getTime(),
+            runId: this.runId!,
+            instanceId: this.instanceId!,
+            id: cbSuite.id,
+            fqn: cbSuite.fqn!,
+            name: cbSuite.name,
+            startTime: cbSuite.startTime,
+            endTime: cbSuite.endTime,
+            runStatus: RunStatusEnum.Finished,
+            testStatus: cbSuite.status!,
+            framework: FRAMEWORK_NAME,
+            language: LANGUAGE_NAME,
+        });
+    }
+
+    onCaseStart(cbCase: CaseResult, cbParentSuite: SuiteResult): void {
+        if (!this.cbApiClient) {
+            return;
+        }
+        this.cbApiClient.updateCaseStatus({
+            timestamp: new Date().getTime(),
+            runId: this.runId!,
+            instanceId: this.instanceId!,
+            id: cbCase.id,
+            fqn: cbCase.fqn,
+            parentFqn: cbParentSuite.fqn!,
+            parentId: cbParentSuite.id,
+            name: cbCase.name,
+            startTime: cbCase.startTime,
+            runStatus: RunStatusEnum.Running,
+            framework: FRAMEWORK_NAME,
+            language: LANGUAGE_NAME,
+        });
+    }
+    onCaseEnd(cbCase: CaseResult, cbParentSuite: SuiteResult): void {
+        if (!this.cbApiClient) {
+            return;
+        }
+        this.cbApiClient.updateCaseStatus({
+            timestamp: new Date().getTime(),
+            runId: this.runId!,
+            instanceId: this.instanceId!,
+            id: cbCase.id,
+            fqn: cbCase.fqn,
+            parentFqn: cbParentSuite.fqn!,
+            parentId: cbParentSuite.id,
+            name: cbCase.name,
+            startTime: cbCase.startTime,
+            endTime: cbCase.endTime,
+            runStatus: RunStatusEnum.Finished,
+            testStatus: cbCase.status!,
+            framework: FRAMEWORK_NAME,
+            language: LANGUAGE_NAME,
+        });
     }
 
     onStepStart(cbStep: StepResult): void {

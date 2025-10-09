@@ -1,6 +1,6 @@
 {
   "name": "@cloudbeat/types",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "CloudBeat API data types",
   "keywords": [
     "cloudbeat"
