@@ -1,8 +1,8 @@
 import { v2 } from '@cloudbeat/client';
 import { CaseResult, ResultStatusEnum, RunStatusEnum, StepResult, SuiteResult, TestResult } from '@cloudbeat/types';
 import { io, Socket } from 'socket.io-client';
-import { CbReporterClient } from './CbReporterClient';
 import { FRAMEWORK_NAME, LANGUAGE_NAME } from '../const';
+import { CbReporterClient } from './CbReporterClient';
 const Queue = require('js-queue');
 
 export class LocalReporterClient implements CbReporterClient {
