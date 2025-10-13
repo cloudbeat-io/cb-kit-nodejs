@@ -8,14 +8,16 @@ export interface CaseStatusUpdateReq {
     instanceId: string;
     id: string;
     fqn: string;
-    parentFqn: string;
+    parentFqn?: string;
     parentId?: string;
+    parentName?: string;
     name: string;
     displayName?: string;
     order?: number;
     iterationNum?: number;
     capabilities?: { [key: string]: any };
-    startTime: number;
+    context?: { [key: string]: any };
+    startTime?: number;
     endTime?: number;
     progress?: number;
     runStatus: RunStatusEnum;

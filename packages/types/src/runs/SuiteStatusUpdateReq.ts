@@ -10,9 +10,10 @@ export interface SuiteStatusUpdateReq {
     fqn?: string;
     parentFqn?: string;
     parentId?: string;
+    parentName?: string;
     name: string;
     displayName?: string;
-    startTime: number;
+    startTime?: number;
     endTime?: number;
     runStatus: RunStatusEnum;
     testStatus?: ResultStatusEnum;
