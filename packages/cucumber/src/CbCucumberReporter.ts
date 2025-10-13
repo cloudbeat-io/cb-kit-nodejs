@@ -1,13 +1,16 @@
+import { v2 } from '@cloudbeat/client';
 import {
     CaseResult as CbCaseResult,
     StepResult as CbStepResult,
     SuiteResult as CbSuiteResult,
     TestResult as CbTestResult,
     ResultStatusEnum,
+    RunStatusEnum,
     StepTypeEnum,
 } from '@cloudbeat/types';
 import { Formatter } from '@cucumber/cucumber';
 import StepDefinition from '@cucumber/cucumber/lib/models/step_definition';
+import { FRAMEWORK_NAME, LANGUAGE_NAME } from './const';
 import { Attachment, Envelope, GherkinDocument, Pickle, ReporterOptions, TestCase, TestCaseFinished, TestCaseStarted, TestRunFinished, TestRunHookStarted, TestRunStarted, TestStats, TestStepFinished, TestStepStarted } from './types';
 import {
     addAttachmentsOnTestCaseFinished,
@@ -37,6 +40,7 @@ class CbCucumberReporter extends Formatter {
     private startedTestCaseMap: Map<string, TestCaseStarted> = new Map();
     private startedCbSuiteMap: Map<string, CbSuiteResult> = new Map();
     private startedCbCaseMap: Map<string, CbCaseResult> = new Map();
+    private pendingCbCaseMap: Map<string, CbCaseResult> = new Map();
     private startedCbStepMap: Map<string, CbStepResult> = new Map();
     private attachmentsByTestStepIdMap: Map<string, any> = new Map();
     private attachmentsByTestCaseIdMap: Map<string, any> = new Map();
@@ -45,6 +49,7 @@ class CbCucumberReporter extends Formatter {
     private instanceId?: string;
     private agentId?: string;
     private resultFilePath?: string;
+    private cbApiClient?: v2.RuntimeApi;
 
     constructor(options: ReporterOptions) {
         super(options);
@@ -76,6 +81,13 @@ class CbCucumberReporter extends Formatter {
                 },
             };
             this.setupEventListeners();
+            const apiUrl = process.env.CB_TEST_MONITOR_URL;
+            const apiToken = process.env.CB_TEST_MONITOR_TOKEN;
+            this.runId = process.env.CB_RUN_ID;
+            this.instanceId = process.env.CB_INSTANCE_ID;
+            if (apiUrl && apiToken && this.runId && this.instanceId) {
+                this.cbApiClient = new v2.RuntimeApi(apiUrl, apiToken);
+            }
             console.log('ℹ️ CbCucumberReporter - initialized');
         }
     }
@@ -130,6 +142,43 @@ class CbCucumberReporter extends Formatter {
         console.log('ℹ️ onTestCase');
         this.acceptedPickleIds.add(testCase.pickleId);
         this.parsedTestCaseMap.set(testCase.id, testCase);
+        // new part below
+        const pickle = this.parsedPickleMap.get(testCase.pickleId);
+        if (!pickle) {
+            return;
+        }
+        const gherkinDocument = this.parsedGherkinDocumentMap.get(pickle.uri);
+        if (!gherkinDocument) {
+            return;
+        }
+        const fqn = `${pickle.uri}:${pickle.name}`;
+        const cbCaseResult: CbCaseResult = {
+            id: generateId(),
+            name: pickle.name,
+            startTime: 0,
+            fqn,
+            iterationNum: -1,
+            reRunCount: 0,
+            steps: [],
+        };
+        this.pendingCbCaseMap.set(testCase.id, cbCaseResult);
+        const cbParentSuite = this.startedCbSuiteMap.get(gherkinDocument.uri);
+        if (this.cbApiClient) {
+            this.cbApiClient.updateCaseStatus({
+                timestamp: new Date().getTime(),
+                runId: this.runId!,
+                instanceId: this.instanceId!,
+                id: cbCaseResult.id,
+                fqn: fqn,
+                parentFqn: cbParentSuite?.fqn,
+                parentId: cbParentSuite?.id,
+                parentName: cbParentSuite?.name,
+                name: cbCaseResult.name,
+                runStatus: RunStatusEnum.Pending,
+                framework: FRAMEWORK_NAME,
+                language: LANGUAGE_NAME,
+            });
+        }
     }
 
     private onGherkinDocument(gherkinDocument: GherkinDocument) {
@@ -207,7 +256,7 @@ class CbCucumberReporter extends Formatter {
     }
 
     private onTestCaseStarted(testCaseStarted: TestCaseStarted): void {
-        console.log('ℹ️ onTestCaseStarted');
+        console.log('ℹ️ onTestCaseStarted - testCaseStarted.id', testCaseStarted.id);
         const testCase = this.parsedTestCaseMap.get(testCaseStarted.testCaseId);
         if (!testCase) {
             return;
@@ -229,7 +278,11 @@ class CbCucumberReporter extends Formatter {
             iterationNum++;
         }
         this.testCaseIterationCounter.set(fqn, iterationNum);
-        const cbCaseResult: CbCaseResult = {
+        const cbCaseResult = this.pendingCbCaseMap.get(testCase.id);
+        if (cbCaseResult) {
+            this.pendingCbCaseMap.delete(testCase.id);
+        }
+        /* const cbCaseResult: CbCaseResult = {
             id: generateId(),
             name: pickle.name,
             startTime: (new Date()).getTime(),
@@ -237,11 +290,14 @@ class CbCucumberReporter extends Formatter {
             iterationNum,
             reRunCount: testCaseStarted.attempt,
             steps: [],
-        };
+        }; */
         const cbParentSuite = this.startedCbSuiteMap.get(gherkinDocument.uri);
-        if (!cbParentSuite) {
+        if (!cbParentSuite || !cbCaseResult) {
             return;
         }
+        cbCaseResult.startTime = (new Date()).getTime();
+        cbCaseResult.reRunCount = testCaseStarted.attempt;
+        cbCaseResult.iterationNum = iterationNum;
         // Adjust startTime of the parent suite, if this is the first test case executed within the suite
         if (cbParentSuite.duration === 0) {
             cbParentSuite.startTime = cbCaseResult.startTime;
@@ -251,6 +307,23 @@ class CbCucumberReporter extends Formatter {
         }
         cbParentSuite.cases.push(cbCaseResult);
         this.startedCbCaseMap.set(testCaseStarted.id, cbCaseResult);
+        if (this.cbApiClient) {
+            this.cbApiClient.updateCaseStatus({
+                timestamp: new Date().getTime(),
+                runId: this.runId!,
+                instanceId: this.instanceId!,
+                id: cbCaseResult.id,
+                fqn: cbCaseResult.fqn,
+                parentFqn: cbParentSuite.fqn!,
+                parentId: cbParentSuite.id,
+                parentName: cbParentSuite.name,
+                name: cbCaseResult.name,
+                startTime: cbCaseResult.startTime,
+                runStatus: RunStatusEnum.Running,
+                framework: FRAMEWORK_NAME,
+                language: LANGUAGE_NAME,
+            });
+        }
     }
 
     private onTestCaseFinished(testCaseFinished: TestCaseFinished): void {
@@ -311,6 +384,24 @@ class CbCucumberReporter extends Formatter {
         // Adjust parent suite status if the current test case has failed
         if (cbCaseResult.status === ResultStatusEnum.FAILED) {
             cbParentSuite.status = ResultStatusEnum.FAILED;
+        }
+        if (this.cbApiClient) {
+            this.cbApiClient.updateCaseStatus({
+                timestamp: new Date().getTime(),
+                runId: this.runId!,
+                instanceId: this.instanceId!,
+                id: cbCaseResult.id,
+                fqn: cbCaseResult.fqn,
+                parentFqn: cbParentSuite.fqn,
+                parentId: cbParentSuite.id,
+                parentName: cbParentSuite.name,
+                name: cbCaseResult.name,
+                endTime: cbCaseResult.endTime,
+                runStatus: RunStatusEnum.Finished,
+                testStatus: cbCaseResult.status,
+                framework: FRAMEWORK_NAME,
+                language: LANGUAGE_NAME,
+            });
         }
     }
 
