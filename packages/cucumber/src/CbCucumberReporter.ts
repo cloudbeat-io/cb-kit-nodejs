@@ -8,6 +8,7 @@ import {
     RunStatusEnum,
     StepTypeEnum,
 } from '@cloudbeat/types';
+import { CaseStatusUpdateReq } from '@cloudbeat/types';
 import { Formatter } from '@cucumber/cucumber';
 import StepDefinition from '@cucumber/cucumber/lib/models/step_definition';
 import { FRAMEWORK_NAME, LANGUAGE_NAME } from './const';
@@ -96,7 +97,7 @@ class CbCucumberReporter extends Formatter {
         this.options.eventBroadcaster.on('envelope', this.handleEnvelope.bind(this));
     }
 
-    private handleEnvelope(envelope: Envelope): void {
+    private async handleEnvelope(envelope: Envelope): Promise<void> {
         // Handle different event types
         if (envelope.testRunStarted) {
             this.onTestRunStarted(envelope.testRunStarted);
@@ -120,10 +121,10 @@ class CbCucumberReporter extends Formatter {
             this.parsedStepDefinitionMap.set(envelope.stepDefinition.id, envelope.stepDefinition);
         }
         else if (envelope.testCaseStarted) {
-            this.onTestCaseStarted(envelope.testCaseStarted);
+            await this.onTestCaseStarted(envelope.testCaseStarted);
         }
         else if (envelope.testCaseFinished) {
-            this.onTestCaseFinished(envelope.testCaseFinished);
+            await this.onTestCaseFinished(envelope.testCaseFinished);
         }
         else if (envelope.testStepStarted) {
             this.onTestStepStarted(envelope.testStepStarted);
@@ -138,7 +139,7 @@ class CbCucumberReporter extends Formatter {
         }
     }
 
-    private onTestCase(testCase: TestCase) {
+    private async onTestCase(testCase: TestCase) {
         console.log('ℹ️ onTestCase');
         this.acceptedPickleIds.add(testCase.pickleId);
         this.parsedTestCaseMap.set(testCase.id, testCase);
@@ -163,22 +164,7 @@ class CbCucumberReporter extends Formatter {
         };
         this.pendingCbCaseMap.set(testCase.id, cbCaseResult);
         const cbParentSuite = this.startedCbSuiteMap.get(gherkinDocument.uri);
-        if (this.cbApiClient) {
-            this.cbApiClient.updateCaseStatus({
-                timestamp: new Date().getTime(),
-                runId: this.runId!,
-                instanceId: this.instanceId!,
-                id: cbCaseResult.id,
-                fqn: fqn,
-                parentFqn: cbParentSuite?.fqn,
-                parentId: cbParentSuite?.id,
-                parentName: cbParentSuite?.name,
-                name: cbCaseResult.name,
-                runStatus: RunStatusEnum.Pending,
-                framework: FRAMEWORK_NAME,
-                language: LANGUAGE_NAME,
-            });
-        }
+        await this.sendCaseStatus(cbCaseResult, RunStatusEnum.Pending, cbParentSuite);
     }
 
     private onGherkinDocument(gherkinDocument: GherkinDocument) {
@@ -255,7 +241,7 @@ class CbCucumberReporter extends Formatter {
         }
     }
 
-    private onTestCaseStarted(testCaseStarted: TestCaseStarted): void {
+    private async onTestCaseStarted(testCaseStarted: TestCaseStarted): Promise<void> {
         console.log('ℹ️ onTestCaseStarted - testCaseStarted.id', testCaseStarted.id);
         const testCase = this.parsedTestCaseMap.get(testCaseStarted.testCaseId);
         if (!testCase) {
@@ -307,26 +293,10 @@ class CbCucumberReporter extends Formatter {
         }
         cbParentSuite.cases.push(cbCaseResult);
         this.startedCbCaseMap.set(testCaseStarted.id, cbCaseResult);
-        if (this.cbApiClient) {
-            this.cbApiClient.updateCaseStatus({
-                timestamp: new Date().getTime(),
-                runId: this.runId!,
-                instanceId: this.instanceId!,
-                id: cbCaseResult.id,
-                fqn: cbCaseResult.fqn,
-                parentFqn: cbParentSuite.fqn!,
-                parentId: cbParentSuite.id,
-                parentName: cbParentSuite.name,
-                name: cbCaseResult.name,
-                startTime: cbCaseResult.startTime,
-                runStatus: RunStatusEnum.Running,
-                framework: FRAMEWORK_NAME,
-                language: LANGUAGE_NAME,
-            });
-        }
+        await this.sendCaseStatus(cbCaseResult, RunStatusEnum.Running, cbParentSuite);
     }
 
-    private onTestCaseFinished(testCaseFinished: TestCaseFinished): void {
+    private async onTestCaseFinished(testCaseFinished: TestCaseFinished): Promise<void> {
         console.log('ℹ️ onTestCaseStarted');
         const cbCaseResult = this.startedCbCaseMap.get(testCaseFinished.testCaseStartedId);
         if (!cbCaseResult) {
@@ -385,24 +355,7 @@ class CbCucumberReporter extends Formatter {
         if (cbCaseResult.status === ResultStatusEnum.FAILED) {
             cbParentSuite.status = ResultStatusEnum.FAILED;
         }
-        if (this.cbApiClient) {
-            this.cbApiClient.updateCaseStatus({
-                timestamp: new Date().getTime(),
-                runId: this.runId!,
-                instanceId: this.instanceId!,
-                id: cbCaseResult.id,
-                fqn: cbCaseResult.fqn,
-                parentFqn: cbParentSuite.fqn,
-                parentId: cbParentSuite.id,
-                parentName: cbParentSuite.name,
-                name: cbCaseResult.name,
-                endTime: cbCaseResult.endTime,
-                runStatus: RunStatusEnum.Finished,
-                testStatus: cbCaseResult.status,
-                framework: FRAMEWORK_NAME,
-                language: LANGUAGE_NAME,
-            });
-        }
+        await this.sendCaseStatus(cbCaseResult, RunStatusEnum.Finished, cbParentSuite);
     }
 
     private onTestStepStarted(testStepStarted: TestStepStarted): void {
@@ -473,6 +426,37 @@ class CbCucumberReporter extends Formatter {
             }
             else if (testStepResult.message) {
                 cbStepResult.failure = getFailureFromMessage(testStepResult.message);
+            }
+        }
+    }
+
+    private async sendCaseStatus(
+        cbCaseResult: CbCaseResult,
+        runStatus: RunStatusEnum,
+        cbParentSuite?: CbSuiteResult,
+    ): Promise<void> {
+        if (this.cbApiClient) {
+            try {
+                await this.cbApiClient.updateCaseStatus({
+                    timestamp: new Date().getTime(),
+                    runId: this.runId!,
+                    instanceId: this.instanceId!,
+                    id: cbCaseResult.id,
+                    fqn: cbCaseResult.fqn,
+                    parentFqn: cbParentSuite?.fqn,
+                    parentId: cbParentSuite?.id,
+                    parentName: cbParentSuite?.name,
+                    name: cbCaseResult.name,
+                    startTime: cbCaseResult.startTime > 0 ? cbCaseResult.startTime : undefined,
+                    endTime: cbCaseResult.endTime,
+                    runStatus,
+                    testStatus: cbCaseResult.status,
+                    framework: FRAMEWORK_NAME,
+                    language: LANGUAGE_NAME,
+                });
+            }
+            catch(e) {
+                // Ignore
             }
         }
     }
