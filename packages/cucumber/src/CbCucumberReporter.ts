@@ -242,7 +242,7 @@ class CbCucumberReporter extends Formatter {
     }
 
     private async onTestCaseStarted(testCaseStarted: TestCaseStarted): Promise<void> {
-        console.log('ℹ️ onTestCaseStarted - testCaseStarted.id', testCaseStarted.id);
+        console.log('ℹ️ onTestCaseStarted');
         const testCase = this.parsedTestCaseMap.get(testCaseStarted.testCaseId);
         if (!testCase) {
             return;
@@ -297,7 +297,7 @@ class CbCucumberReporter extends Formatter {
     }
 
     private async onTestCaseFinished(testCaseFinished: TestCaseFinished): Promise<void> {
-        console.log('ℹ️ onTestCaseStarted');
+        console.log('ℹ️ onTestCaseFinished');
         const cbCaseResult = this.startedCbCaseMap.get(testCaseFinished.testCaseStartedId);
         if (!cbCaseResult) {
             return;
@@ -437,6 +437,7 @@ class CbCucumberReporter extends Formatter {
     ): Promise<void> {
         if (this.cbApiClient) {
             try {
+                console.log('ℹ️ Trying to send runtime status...');
                 await this.cbApiClient.updateCaseStatus({
                     timestamp: new Date().getTime(),
                     runId: this.runId!,
@@ -454,9 +455,11 @@ class CbCucumberReporter extends Formatter {
                     framework: FRAMEWORK_NAME,
                     language: LANGUAGE_NAME,
                 });
+                console.log('ℹ️ Runtime status sent');
             }
             catch(e) {
                 // Ignore
+                console.log('❌ Failed to send runtime status:', e);
             }
         }
     }
