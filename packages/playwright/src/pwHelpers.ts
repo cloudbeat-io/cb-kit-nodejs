@@ -136,7 +136,13 @@ export function createCbCaseResult(pwCase: TestCase, cbParentSuite: SuiteResult)
         location: getCodeLocation(pwCase.location, testDir),
         steps: [],
         _parent: cbParentSuite,
+        context: {},
     };
+    if (pwCase.parent.project() && pwCase.parent.project()!.name) {
+        newCbCase.context = {
+            browserName: pwCase.parent.project()!.name,
+        };
+    }
     cbParentSuite.cases.push(newCbCase);
     return newCbCase;
 }

@@ -13,10 +13,8 @@ import { v4 as uuidv4 } from 'uuid';
 const CB_TEST_RESULT_FILE_NAME = '.CB_TEST_RESULTS.json';
 
 export function generateResultFile(result: CbTestResult, filePath: string) {
-    console.log('ℹ️ generateResultFile - start');
     const fileContent = JSON.stringify(result, null, 4);
     fs.writeFileSync(filePath, fileContent);
-    console.log('ℹ️ generateResultFile - finished');
 }
 
 export function getResultFilePath(outputDir?: string) {
