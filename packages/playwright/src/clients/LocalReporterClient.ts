@@ -92,6 +92,12 @@ export class LocalReporterClient implements CbReporterClient {
         if (!this.cbApiClient) {
             return;
         }
+        let caps;
+        if (cbCase.context && cbCase.context.browserName) {
+            caps = {
+                browserName: cbCase.context.browserName,
+            };
+        }
         this.cbApiClient.updateCaseStatus({
             timestamp: new Date().getTime(),
             runId: this.runId!,
@@ -105,6 +111,7 @@ export class LocalReporterClient implements CbReporterClient {
             runStatus: RunStatusEnum.Running,
             framework: FRAMEWORK_NAME,
             language: LANGUAGE_NAME,
+            capabilities: caps,
         });
     }
     onCaseEnd(cbCase: CaseResult, cbParentSuite: SuiteResult): void {
