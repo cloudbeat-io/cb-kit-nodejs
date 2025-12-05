@@ -34,6 +34,7 @@
     "build:types": "lerna run build --scope @cloudbeat/types",
     "build:cypress": "lerna run build --scope @cloudbeat/cypress",
     "build:playwright": "lerna run build --scope @cloudbeat/playwright",
+    "build:cucumber": "lerna run build --scope @cloudbeat/cucumber",
     "eslint": "[ \"$CI\" = true ] && eslint --quiet -f codeframe --ext ts,tsx . || eslint --ext ts,tsx .",
     "tsc": "tsc -p ."
   }
