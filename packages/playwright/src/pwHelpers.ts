@@ -11,6 +11,7 @@ export function getPwSuiteFqn(pwSuite?: Suite): string {
 
     while (pwSuite) {
         /* eslint-disable no-underscore-dangle */
+        // @ts-expect-error access to private property _type
         const pwSuiteType = pwSuite._type;
         /* eslint-enable no-underscore-dangle */
 
