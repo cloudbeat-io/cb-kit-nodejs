@@ -8,23 +8,31 @@ import { v4 as uuidv4 } from 'uuid';
 export function getPwSuiteFqn(pwSuite?: Suite): string {
     const { testDir } = pwSuite?.project() || {};
     const fqnParts: string[] = [];
+
     while (pwSuite) {
-        // @ts-expect-error access to private property _type
-        // eslint-disable-next-line no-underscore-dangle
+        /* eslint-disable no-underscore-dangle */
         const pwSuiteType = pwSuite._type;
-        if (!pwSuite.location || !pwSuite.title || pwSuite.title === '') {
+        /* eslint-enable no-underscore-dangle */
+
+        if (pwSuiteType === 'root' || pwSuiteType === 'project' || !pwSuite.title || pwSuite.title === '') {
             pwSuite = pwSuite.parent;
             continue;
         }
+
         if (pwSuiteType === 'file') {
-            fqnParts.push(getRelativeLocation(pwSuite.location.file, testDir)!);
+            const relativePath = getRelativeLocation(pwSuite.location?.file, testDir);
+            if (relativePath) {
+                fqnParts.push(relativePath.replace(/\\/g, '/'));
+            }
         }
         else {
-            fqnParts.push(getTitleBasedFqn(pwSuite.title));
+            fqnParts.push(pwSuite.title);
         }
+
         pwSuite = pwSuite.parent;
     }
-    return fqnParts.reverse().join('#');
+
+    return fqnParts.reverse().join(':');
 }
 
 export function getPwSuiteKey(pwSuite: Suite): string {
@@ -102,11 +110,7 @@ export function createCbSuiteResult(pwSuite: Suite, cbParentSuite?: SuiteResult)
 
 function getRelativeLocation(filePath: string | undefined, testDir: string | undefined): string | undefined {
     if (testDir && filePath) {
-        const fqnSegments = path.relative(testDir, filePath).split(path.sep);
-        const nativePathSegments = testDir.split(path.sep);
-        const testDirName = nativePathSegments[nativePathSegments.length-1];
-        fqnSegments.unshift(testDirName);
-        return fqnSegments.join('\\');
+        return path.relative(testDir, filePath).split(path.sep).join('/');
     }
     return filePath;
 }
@@ -131,14 +135,14 @@ export function createCbCaseResult(pwCase: TestCase, cbParentSuite: SuiteResult)
         id: uuidv4(),
         name: pwCase.title,
         startTime: (new Date().getTime()),
-        fqn: `${cbParentSuite.fqn || ''}#${getTitleBasedFqn(pwCase.title)}`,
+        fqn: `${cbParentSuite.fqn || ''}:${pwCase.title}`,
         iterationNum: pwCase.repeatEachIndex + 1,
         location: getCodeLocation(pwCase.location, testDir),
         steps: [],
         _parent: cbParentSuite,
         context: {},
     };
-    if (pwCase.parent.project() && pwCase.parent.project()!.name) {
+    if (pwCase.parent.project()?.name) {
         newCbCase.context = {
             browserName: pwCase.parent.project()!.name,
         };
