@@ -28,6 +28,10 @@ export class RemoteReporterClient implements CbReporterClient {
 
     }
 
+    onCasePending(cbCase: CaseResult, cbParentSuite: SuiteResult): void {
+
+    }
+
     onCaseStart(cbCase: CaseResult, cbParentSuite: SuiteResult): void {
 
     }

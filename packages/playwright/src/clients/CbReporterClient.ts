@@ -9,6 +9,7 @@ export interface CbReporterClient {
     onSuiteStart(cbSuite: SuiteResult): void;
     onSuiteEnd(cbSuite: SuiteResult): void;
 
+    onCasePending(cbCase: CaseResult, cbParentSuite: SuiteResult): void;
     onCaseStart(cbCase: CaseResult, cbParentSuite: SuiteResult): void;
     onCaseEnd(cbCase: CaseResult, cbParentSuite: SuiteResult): void;
 
