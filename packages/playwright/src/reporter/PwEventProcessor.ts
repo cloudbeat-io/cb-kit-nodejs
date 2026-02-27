@@ -79,13 +79,20 @@ export class PwEventProcessor {
             suites: [],
         };
         this.cbClient.onRunStart();
+
+        for (const pwTest of pwSuite.allTests()) {
+            const cbParentSuite = this.getParentCbSuite(pwTest.parent);
+            const cbCase = createCbCaseResult(pwTest, cbParentSuite);
+            this.cbCaseCache.set(pwTest, cbCase);
+            this.cbClient.onCasePending(cbCase, cbParentSuite);
+        }
     }
 
     public onTestBegin(pwTest: TestCase) {
-        const cbParentSuite = this.getParentCbSuite(pwTest.parent);
-        const newCbCase = createCbCaseResult(pwTest, cbParentSuite);
-        this.cbCaseCache.set(pwTest, newCbCase);
-        this.cbClient.onCaseStart(newCbCase, cbParentSuite);
+        const cbCase = this.cbCaseCache.get(pwTest)!;
+        // @ts-expect-error access to private property _parent
+        const cbParentSuite = cbCase._parent as CbSuiteResult;
+        this.cbClient.onCaseStart(cbCase, cbParentSuite);
     }
 
     public onTestEnd(pwTest: TestCase, pwResult: TestResult) {

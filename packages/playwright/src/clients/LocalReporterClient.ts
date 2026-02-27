@@ -88,6 +88,24 @@ export class LocalReporterClient implements CbReporterClient {
         });
     }
 
+    onCasePending(cbCase: CaseResult, cbParentSuite: SuiteResult): void {
+        if (!this.cbApiClient) return;
+        this.cbApiClient.updateCaseStatus({
+            timestamp: new Date().getTime(),
+            runId: this.runId!,
+            instanceId: this.instanceId!,
+            id: cbCase.id,
+            fqn: cbCase.fqn,
+            parentFqn: cbParentSuite.fqn!,
+            parentId: cbParentSuite.id,
+            name: cbCase.name,
+            startTime: cbCase.startTime,
+            runStatus: RunStatusEnum.Pending,
+            framework: FRAMEWORK_NAME,
+            language: LANGUAGE_NAME,
+        });
+    }
+
     onCaseStart(cbCase: CaseResult, cbParentSuite: SuiteResult): void {
         if (!this.cbApiClient) {
             return;
