@@ -106,6 +106,51 @@ export function addAttachmentsOnTestCaseFinished(
             /* else if (attachment.testCaseStartedId === cukeTestCaseId) {
             } */
         }
+        else if (attachment.mediaType === 'application/json;x-origin=cloudbeat') {
+            try {
+                const event = JSON.parse(attachment.body as string) as { type: string; data: any };
+                applyCbEvent(event, cbCaseResult);
+            }
+            catch {}
+        }
+    }
+}
+
+function applyCbEvent(event: { type: string; data: any }, cbCaseResult: CbCaseResult): void {
+    switch (event.type) {
+        case 'setFailureReason': {
+            (cbCaseResult as any).failureReasonId = event.data.reason;
+            break;
+        }
+        case 'addTestAttribute': {
+            if (!(cbCaseResult as any).testAttributes) {
+                (cbCaseResult as any).testAttributes = {};
+            }
+            (cbCaseResult as any).testAttributes[event.data.name] = event.data.value;
+            break;
+        }
+        case 'addOutputData': {
+            if (!(cbCaseResult as any).context) {
+                (cbCaseResult as any).context = {};
+            }
+            if (!(cbCaseResult as any).context.resultData) {
+                (cbCaseResult as any).context.resultData = [];
+            }
+            (cbCaseResult as any).context.resultData.push({ Name: event.data.name, Data: event.data.data });
+            break;
+        }
+        case 'addConsoleLog': {
+            if (!(cbCaseResult as any).logs) {
+                (cbCaseResult as any).logs = [];
+            }
+            (cbCaseResult as any).logs.push({
+                time: new Date().getTime(),
+                level: event.data.type || 'unknown',
+                msg: event.data.message,
+                src: 'browser',
+            });
+            break;
+        }
     }
 }
 
@@ -117,7 +162,7 @@ export function addPlaywrightStepsAndScreenshotFromAttachments(cbStepResult: CbS
         // Playwright event JSON
         if (attachment.mediaType === 'application/json;x-origin=cloudbeat') {
             try {
-                const event = JSON.parse(attachment.body as string);
+                const event = JSON.parse(attachment.body as string) as { type: string; data: any };
                 let stepName;
                 const extra = {};
                 if (event.type === 'locator_action' || event.type === 'page_action') {
