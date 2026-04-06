@@ -55,16 +55,14 @@ class CbCucumberReporter extends Formatter {
     constructor(options: ReporterOptions) {
         super(options);
 
-        console.log('ℹ️ CbCucumberReporter - constructor');
         this.options = options;
         // Check if we are running inside CB agent
-        if (process.env.CB_AGENT
-            && process.env.CB_AGENT === 'true'
+        if (process.env.CB_AGENT === 'true'
             && (options.runId || process.env.CB_RUN_ID)
             && (options.instanceId || process.env.CB_INSTANCE_ID)
             && (options.agentId || process.env.CB_AGENT_ID)
         ) {
-            console.log('ℹ️ CbCucumberReporter - start initializing');
+            //console.log('ℹ️ CbCucumberReporter - start initializing');
             this.runId = options.runId || process.env.CB_RUN_ID;
             this.instanceId = options.instanceId || process.env.CB_INSTANCE_ID;
             this.agentId = options.agentId || process.env.CB_AGENT_ID;
@@ -90,6 +88,9 @@ class CbCucumberReporter extends Formatter {
                 this.cbApiClient = new v2.RuntimeApi(apiUrl, apiToken);
             }
             console.log('ℹ️ CbCucumberReporter - initialized');
+        }
+        else {
+            console.log('❌ CbCucumberReporter - was not initialized');
         }
     }
 
@@ -140,7 +141,7 @@ class CbCucumberReporter extends Formatter {
     }
 
     private async onTestCase(testCase: TestCase) {
-        console.log('ℹ️ onTestCase');
+        //console.log('ℹ️ onTestCase');
         this.acceptedPickleIds.add(testCase.pickleId);
         this.parsedTestCaseMap.set(testCase.id, testCase);
         // new part below
@@ -152,7 +153,7 @@ class CbCucumberReporter extends Formatter {
         if (!gherkinDocument) {
             return;
         }
-        const fqn = `${pickle.uri}:${pickle.name}`;
+        const fqn = `${pickle.uri.replace(/\\/g, '/')}:${pickle.name}`;
         const cbCaseResult: CbCaseResult = {
             id: generateId(),
             name: pickle.name,
@@ -177,7 +178,7 @@ class CbCucumberReporter extends Formatter {
             name: gherkinDocument.feature?.name,
             startTime: (new Date()).getTime(),
             duration: 0,
-            fqn: gherkinDocument.uri,
+            fqn: gherkinDocument.uri.replace(/\\/g, '/'),
             status: ResultStatusEnum.SKIPPED,
             iterationNum: 1,
             suites: [],
@@ -214,13 +215,13 @@ class CbCucumberReporter extends Formatter {
     }
 
     private onTestRunStarted(testRunStarted: TestRunStarted): void {
-        console.log('ℹ️ onTestRunStarted');
+        //console.log('ℹ️ onTestRunStarted');
         // Override startTime, as the original one is incorrect due to object being initialized in the constructor
         this.cbTestResult!.startTime = (new Date()).getTime();
     }
 
     private onTestRunFinished(testRunFinished: TestRunFinished): void {
-        console.log('ℹ️ onTestRunFinished');
+        //console.log('ℹ️ onTestRunFinished');
         if (!this.cbTestResult) {
             return;
         }
@@ -242,7 +243,7 @@ class CbCucumberReporter extends Formatter {
     }
 
     private async onTestCaseStarted(testCaseStarted: TestCaseStarted): Promise<void> {
-        console.log('ℹ️ onTestCaseStarted');
+        //console.log('ℹ️ onTestCaseStarted');
         const testCase = this.parsedTestCaseMap.get(testCaseStarted.testCaseId);
         if (!testCase) {
             return;
@@ -256,7 +257,7 @@ class CbCucumberReporter extends Formatter {
             return;
         }
         this.startedTestCaseMap.set(testCaseStarted.id, testCaseStarted);
-        const fqn = `${pickle.uri}:${pickle.name}`;
+        const fqn = `${pickle.uri.replace(/\\/g, '/')}:${pickle.name}`;
         // retrieve or update iterations counter
         let iterationNum = this.testCaseIterationCounter.get(fqn) || 0;
         // if this is a retry run, keep the iteration number same
@@ -297,7 +298,7 @@ class CbCucumberReporter extends Formatter {
     }
 
     private async onTestCaseFinished(testCaseFinished: TestCaseFinished): Promise<void> {
-        console.log('ℹ️ onTestCaseFinished');
+        //console.log('ℹ️ onTestCaseFinished');
         const cbCaseResult = this.startedCbCaseMap.get(testCaseFinished.testCaseStartedId);
         if (!cbCaseResult) {
             return;
@@ -437,7 +438,6 @@ class CbCucumberReporter extends Formatter {
     ): Promise<void> {
         if (this.cbApiClient) {
             try {
-                console.log('ℹ️ Trying to send runtime status...');
                 await this.cbApiClient.updateCaseStatus({
                     timestamp: new Date().getTime(),
                     runId: this.runId!,
@@ -455,7 +455,6 @@ class CbCucumberReporter extends Formatter {
                     framework: FRAMEWORK_NAME,
                     language: LANGUAGE_NAME,
                 });
-                console.log('ℹ️ Runtime status sent');
             }
             catch(e) {
                 // Ignore
