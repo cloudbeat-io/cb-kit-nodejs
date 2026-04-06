@@ -1,6 +1,6 @@
 {
   "name": "@cloudbeat/cucumber",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "CloudBeat Test Reporting Kit for Cucumber.js",
   "keywords": [
     "cloudbeat",
@@ -44,7 +44,7 @@
   "dependencies": {
     "@cloudbeat/types": "1.0.8",
     "@cloudbeat/client": "1.4.0",
-    "debug": "^4.3.4",
+    "debug": "^4.4.3",
     "moment": "^2.30.1"
   },
   "devDependencies": {
