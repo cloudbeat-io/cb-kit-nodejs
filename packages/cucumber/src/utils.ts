@@ -12,6 +12,23 @@ import { v4 as uuidv4 } from 'uuid';
 
 const CB_TEST_RESULT_FILE_NAME = '.CB_TEST_RESULTS.json';
 
+interface CbHelperEvent {
+    type: string;
+    data: Record<string, unknown>;
+}
+
+interface PwEvent {
+    type: string;
+    method: string;
+    selector?: string;
+    actual?: unknown;
+    expected?: unknown;
+    error?: unknown;
+    start: number;
+    end: number;
+    success: boolean;
+}
+
 export function generateResultFile(result: CbTestResult, filePath: string) {
     const fileContent = JSON.stringify(result, null, 4);
     fs.writeFileSync(filePath, fileContent);
@@ -85,6 +102,7 @@ export function getGherkinStepExtraType(type: string): any {
     }
     return undefined;
 }
+
 export function addAttachmentsOnTestCaseFinished(
     cukeTestCaseId: string,
     cbCaseResult: CbCaseResult,
@@ -108,7 +126,7 @@ export function addAttachmentsOnTestCaseFinished(
         }
         else if (attachment.mediaType === 'application/json;x-origin=cloudbeat') {
             try {
-                const event = JSON.parse(attachment.body as string) as { type: string; data: any };
+                const event = JSON.parse(attachment.body as string) as CbHelperEvent;
                 applyCbEvent(event, cbCaseResult);
             }
             catch {}
@@ -116,7 +134,7 @@ export function addAttachmentsOnTestCaseFinished(
     }
 }
 
-function applyCbEvent(event: { type: string; data: any }, cbCaseResult: CbCaseResult): void {
+function applyCbEvent(event: CbHelperEvent, cbCaseResult: CbCaseResult): void {
     switch (event.type) {
         case 'setFailureReason': {
             (cbCaseResult as any).failureReasonId = event.data.reason;
@@ -126,7 +144,7 @@ function applyCbEvent(event: { type: string; data: any }, cbCaseResult: CbCaseRe
             if (!(cbCaseResult as any).testAttributes) {
                 (cbCaseResult as any).testAttributes = {};
             }
-            (cbCaseResult as any).testAttributes[event.data.name] = event.data.value;
+            (cbCaseResult as any).testAttributes[event.data.name as string] = event.data.value;
             break;
         }
         case 'addOutputData': {
@@ -162,11 +180,11 @@ export function addPlaywrightStepsAndScreenshotFromAttachments(cbStepResult: CbS
         // Playwright event JSON
         if (attachment.mediaType === 'application/json;x-origin=cloudbeat') {
             try {
-                const event = JSON.parse(attachment.body as string) as { type: string; data: any };
+                const event = JSON.parse(attachment.body as string) as PwEvent;
                 let stepName;
                 const extra = {};
                 if (event.type === 'locator_action' || event.type === 'page_action') {
-                    stepName = `${event.method} "${event.selector}"`;
+                    stepName = `${event.method} "${event.selector ?? ''}"`;
                 }
                 else if (event.type === 'assertion') {
                     stepName = `${event.method.replace('expect.', '')}`;
@@ -185,19 +203,13 @@ export function addPlaywrightStepsAndScreenshotFromAttachments(cbStepResult: CbS
                     if (event.type === 'assertion' && failure) {
                         failure.type = 'ASSERTION_ERROR';
                     }
-                    /* failure = {
-                        type: event.type === 'assertion' ? 'ASSERTION_ERROR' : 'PLAYWRIGHT_ERROR',
-                        subtype: event.error.type,
-                        message: event.error.message,
-                        stacktrace: event.error.stack,
-                    }; */
                 }
                 cbStepResult.steps?.push({
                     id: generateId(),
                     name: stepName,
                     type: event.type === 'assertion' ? StepTypeEnum.ASSERTION : StepTypeEnum.GENERAL,
-                    startTime: event.start as number,
-                    endTime: event.end as number,
+                    startTime: event.start,
+                    endTime: event.end,
                     duration: event.end - event.start,
                     extra: extra,
                     status: event.success ? ResultStatusEnum.PASSED : ResultStatusEnum.FAILED,
