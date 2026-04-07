@@ -39,6 +39,10 @@ export class cb {
         cb.send('addConsoleLog', { type: message.type(), message: message.text() });
     }
 
+    public static addAttachment(name: 'video' | 'trace', filePath: string): void {
+        cb.send('addAttachment', { name, filePath });
+    }
+
     private static send(type: string, data: object): void {
         if (!cb.world) {
             console.warn(`[CB] cb.${type} called before cb.setWorld() — call cb.setWorld(this) in a Before hook`);

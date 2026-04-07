@@ -1,6 +1,9 @@
 import fs from 'fs';
 import path from 'path';
 import {
+    Attachment,
+    AttachmentSubTypeEnum,
+    AttachmentTypeEnum,
     CaseResult as CbCaseResult,
     StepResult as CbStepResult,
     TestResult as CbTestResult,
@@ -40,7 +43,6 @@ export function getResultFilePath(outputDir?: string) {
         if (!path.isAbsolute(outputDir)) {
             outputDir = path.join(process.cwd(), outputDir);
         }
-        // Ensure output directory exists
         if (!fs.existsSync(outputDir)) {
             fs.mkdirSync(outputDir, { recursive: true });
         }
@@ -120,9 +122,6 @@ export function addAttachmentsOnTestCaseFinished(
                     cbStepResult.screenShot = attachment.body;
                 }
             }
-            // TODO: handle test case level attachments
-            /* else if (attachment.testCaseStartedId === cukeTestCaseId) {
-            } */
         }
         else if (attachment.mediaType === 'application/json;x-origin=cloudbeat') {
             try {
@@ -169,6 +168,22 @@ function applyCbEvent(event: CbHelperEvent, cbCaseResult: CbCaseResult): void {
             });
             break;
         }
+        case 'addAttachment': {
+            if (!cbCaseResult.attachments) {
+                cbCaseResult.attachments = [];
+            }
+            const isVideo = event.data.name === 'video';
+            const filePath = event.data.filePath as string;
+            const cbAttachment: Attachment = {
+                id: uuidv4(),
+                type: isVideo ? AttachmentTypeEnum.Video : AttachmentTypeEnum.Other,
+                subType: isVideo ? AttachmentSubTypeEnum.Screencast : AttachmentSubTypeEnum.PlaywrightTrace,
+                fileName: path.basename(filePath),
+                filePath,
+            };
+            cbCaseResult.attachments.push(cbAttachment);
+            break;
+        }
     }
 }
 
@@ -177,7 +192,6 @@ export function addPlaywrightStepsAndScreenshotFromAttachments(cbStepResult: CbS
         return;
     }
     for (const attachment of attachments) {
-        // Playwright event JSON
         if (attachment.mediaType === 'application/json;x-origin=cloudbeat') {
             try {
                 const event = JSON.parse(attachment.body as string) as PwEvent;
@@ -196,8 +210,7 @@ export function addPlaywrightStepsAndScreenshotFromAttachments(cbStepResult: CbS
                 else {
                     continue;
                 }
-                // eslint-disable-next-line no-undef-init
-                let failure: FailureResult | undefined = undefined;
+                let failure: FailureResult | undefined;
                 if (event.error) {
                     failure = getFailureFromException(event.error, 'PLAYWRIGHT_ERROR');
                     if (event.type === 'assertion' && failure) {
@@ -218,7 +231,6 @@ export function addPlaywrightStepsAndScreenshotFromAttachments(cbStepResult: CbS
             }
             catch {}
         }
-        // Screenshot
         else if (attachment.mediaType === 'image/png') {
             cbStepResult.screenShot = attachment.body;
         }

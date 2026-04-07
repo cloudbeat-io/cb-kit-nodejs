@@ -62,7 +62,7 @@ class CbCucumberReporter extends Formatter {
             && (options.instanceId || process.env.CB_INSTANCE_ID)
             && (options.agentId || process.env.CB_AGENT_ID)
         ) {
-            //console.log('ℹ️ CbCucumberReporter - start initializing');
+            // console.log('ℹ️ CbCucumberReporter - start initializing');
             this.runId = options.runId || process.env.CB_RUN_ID;
             this.instanceId = options.instanceId || process.env.CB_INSTANCE_ID;
             this.agentId = options.agentId || process.env.CB_AGENT_ID;
@@ -141,7 +141,7 @@ class CbCucumberReporter extends Formatter {
     }
 
     private async onTestCase(testCase: TestCase) {
-        //console.log('ℹ️ onTestCase');
+        // console.log('ℹ️ onTestCase');
         this.acceptedPickleIds.add(testCase.pickleId);
         this.parsedTestCaseMap.set(testCase.id, testCase);
         // new part below
@@ -215,13 +215,13 @@ class CbCucumberReporter extends Formatter {
     }
 
     private onTestRunStarted(testRunStarted: TestRunStarted): void {
-        //console.log('ℹ️ onTestRunStarted');
+        // console.log('ℹ️ onTestRunStarted');
         // Override startTime, as the original one is incorrect due to object being initialized in the constructor
         this.cbTestResult!.startTime = (new Date()).getTime();
     }
 
     private onTestRunFinished(testRunFinished: TestRunFinished): void {
-        //console.log('ℹ️ onTestRunFinished');
+        // console.log('ℹ️ onTestRunFinished');
         if (!this.cbTestResult) {
             return;
         }
@@ -243,7 +243,7 @@ class CbCucumberReporter extends Formatter {
     }
 
     private async onTestCaseStarted(testCaseStarted: TestCaseStarted): Promise<void> {
-        //console.log('ℹ️ onTestCaseStarted');
+        // console.log('ℹ️ onTestCaseStarted');
         const testCase = this.parsedTestCaseMap.get(testCaseStarted.testCaseId);
         if (!testCase) {
             return;
@@ -298,7 +298,7 @@ class CbCucumberReporter extends Formatter {
     }
 
     private async onTestCaseFinished(testCaseFinished: TestCaseFinished): Promise<void> {
-        //console.log('ℹ️ onTestCaseFinished');
+        // console.log('ℹ️ onTestCaseFinished');
         const cbCaseResult = this.startedCbCaseMap.get(testCaseFinished.testCaseStartedId);
         if (!cbCaseResult) {
             return;
