@@ -45,7 +45,8 @@
     "@cloudbeat/types": "1.0.8",
     "@cloudbeat/client": "2.0.0",
     "debug": "^4.4.3",
-    "moment": "^2.30.1"
+    "moment": "^2.30.1",
+    "uuid": "^9.0.1"
   },
   "devDependencies": {
     "@cucumber/cucumber": "^12.0.0",
