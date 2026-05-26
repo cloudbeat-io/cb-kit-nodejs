@@ -1,6 +1,6 @@
 {
   "name": "@cloudbeat/client",
-  "version": "1.4.0",
+  "version": "2.0.0",
   "description": "CloudBeat API client library ",
   "keywords": [
     "cloudbeat"
@@ -33,7 +33,7 @@
   },
   "dependencies": {
     "@cloudbeat/types": "1.0.8",
-    "axios": "^0.30.2",
+    "axios": "^1.16.1",
     "debug": "^4.3.4",
     "moment": "^2.30.1"
   },
