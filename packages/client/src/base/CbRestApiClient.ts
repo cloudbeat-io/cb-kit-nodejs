@@ -1,5 +1,5 @@
 import { URLSearchParams } from 'url';
-import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
+import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 import Debug from 'debug';
 
 const debug = Debug('RuntimeApi');
@@ -26,10 +26,7 @@ export class CbRestApiClient {
         this._initializeResponseInterceptor();
     }
 
-    protected _handleRequest = (config: AxiosRequestConfig) => {
-        if (!config.headers) {
-            config.headers = {};
-        }
+    protected _handleRequest = (config: InternalAxiosRequestConfig) => {
         if (!config.headers['Content-Type'] && !config.headers['content-type']) {
             config.headers['Content-Type'] = 'application/json';
         }
