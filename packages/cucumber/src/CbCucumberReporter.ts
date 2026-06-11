@@ -416,18 +416,26 @@ class CbCucumberReporter extends Formatter {
         const attachments = this.attachmentsByTestStepIdMap.get(testStepId);
         cbStepResult.endTime = (new Date()).getTime();
         cbStepResult.duration = cbStepResult.endTime - cbStepResult.startTime!;
-        cbStepResult.status = ResultStatusEnum.PASSED;
         // Add additional steps if provided in the attachments (like in case of Playwright integration)
         addPlaywrightStepsAndScreenshotFromAttachments(cbStepResult, attachments);
         // Determine step status
-        if (testStepResult && testStepResult.status === 'FAILED') {
-            cbStepResult.status = ResultStatusEnum.FAILED;
-            if (testStepResult.exception) {
-                cbStepResult.failure = getFailureFromException(testStepResult.exception);
-            }
-            else if (testStepResult.message) {
-                cbStepResult.failure = getFailureFromMessage(testStepResult.message);
-            }
+        switch (testStepResult?.status) {
+            case 'PASSED':
+                cbStepResult.status = ResultStatusEnum.PASSED;
+                break;
+            case 'SKIPPED':
+                cbStepResult.status = ResultStatusEnum.SKIPPED;
+                break;
+            default:
+                // FAILED, PENDING, UNDEFINED, AMBIGUOUS, UNKNOWN
+                cbStepResult.status = ResultStatusEnum.FAILED;
+                if (testStepResult?.exception) {
+                    cbStepResult.failure = getFailureFromException(testStepResult.exception);
+                }
+                else if (testStepResult?.message) {
+                    cbStepResult.failure = getFailureFromMessage(testStepResult.message);
+                }
+                break;
         }
     }
 

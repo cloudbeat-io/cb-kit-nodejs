@@ -262,7 +262,7 @@ export interface TestStepFinished {
     testCaseStartedId: string;
     testStepId: string;
     testStepResult: {
-        status: 'PASSED' | 'FAILED' | 'SKIPPED' | 'PENDING' | 'UNDEFINED';
+        status: 'UNKNOWN' | 'PASSED' | 'FAILED' | 'SKIPPED' | 'PENDING' | 'UNDEFINED' | 'AMBIGUOUS';
         message: string;
         exception: {
             type: string;
