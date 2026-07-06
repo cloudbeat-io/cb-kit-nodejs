@@ -5,7 +5,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Auto reviews branches
-        uses: golfzaptw/action-auto-reviews-from-branches@2.0.0
+        uses: golfzaptw/action-auto-reviews-from-branches@56292528010cf30b152738d99e2b6c9377b396ab # 2.0.0
         with:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN}}
           EVENT_TYPE: APPROVE
