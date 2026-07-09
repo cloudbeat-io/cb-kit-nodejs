@@ -31,7 +31,7 @@
   "dependencies": {
     "@playwright/test": "^1.48.2",
     "@cloudbeat/types": "1.0.8",
-    "@cloudbeat/client": "1.4.0",
+    "@cloudbeat/client": "2.0.0",
     "debug": "^4.4.3",
     "js-queue": "^2.0.2",
     "moment": "^2.30.1",
