@@ -66,6 +66,29 @@ export function determineTestCaseStatus(result: CbCaseResult): ResultStatusEnum 
     return hasFailedSteps ? ResultStatusEnum.FAILED : ResultStatusEnum.PASSED;
 }
 
+// exception.stackTrace has "at ... (file:line:col)" frames - the first one is often inside an assertion library
+// (e.g. node_modules/playwright/lib/matchers/expect.js), so skip node_modules/node: frames to
+// find the actual line in the user's own step definition / page object that caused the failure
+const STACK_FRAME_REGEX = /at\s+(?:.*?\s+)?\(?([^\s()]+):(\d+):(\d+)\)?\s*$/;
+
+function getLocationFromStackTrace(stackTrace: string | undefined): string | undefined {
+    if (!stackTrace) {
+        return undefined;
+    }
+    for (const line of stackTrace.split('\n')) {
+        const match = STACK_FRAME_REGEX.exec(line.trim());
+        if (!match) {
+            continue;
+        }
+        const [, file, lineNum, col] = match;
+        if (file.includes('node_modules') || file.startsWith('node:')) {
+            continue;
+        }
+        return `${file}:${lineNum}:${col}`;
+    }
+    return undefined;
+}
+
 export function getFailureFromException(exception: any, defaultErrorType?: string | undefined): FailureResult | undefined {
     if (!exception) {
         return undefined;
@@ -79,6 +102,7 @@ export function getFailureFromException(exception: any, defaultErrorType?: strin
     failure.subtype = exception.type;
     failure.message = exception.message;
     failure.stacktrace = exception.stackTrace || exception.stack;
+    failure.location = getLocationFromStackTrace(failure.stacktrace);
     return failure;
 }
 
