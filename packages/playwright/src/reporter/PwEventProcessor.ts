@@ -91,6 +91,7 @@ export class PwEventProcessor {
     public onTestBegin(pwTest: TestCase) {
         const cbCase = this.cbCaseCache.get(pwTest)!;
         // @ts-expect-error access to private property _parent
+        // eslint-disable-next-line no-underscore-dangle
         const cbParentSuite = cbCase._parent as CbSuiteResult;
         this.cbClient.onCaseStart(cbCase, cbParentSuite);
     }

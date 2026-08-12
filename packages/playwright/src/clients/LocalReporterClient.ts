@@ -89,7 +89,9 @@ export class LocalReporterClient implements CbReporterClient {
     }
 
     onCasePending(cbCase: CaseResult, cbParentSuite: SuiteResult): void {
-        if (!this.cbApiClient) return;
+        if (!this.cbApiClient) {
+            return;
+        }
         this.cbApiClient.updateCaseStatus({
             timestamp: new Date().getTime(),
             runId: this.runId!,
