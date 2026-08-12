@@ -119,7 +119,7 @@ export class PwEventProcessor {
 
         cbCaseResult.steps = this._getCbStepsFromPwSteps(pwResult.steps, testDir, failureScreenshot);
         if (pwResult.status === 'failed' && this._hasNoFailedSteps(cbCaseResult.steps)) {
-            cbCaseResult.failure = this._getCbFailureFromPwError(pwResult);
+            cbCaseResult.failure = this._getCbFailureFromPwError(pwResult, testDir);
         }
 
         // update end-time of the parent suites + update status
@@ -427,7 +427,7 @@ export class PwEventProcessor {
                 location: pwStep.location ? getCodeLocation(pwStep.location, testDir) : undefined,
                 type: this._getCbStepTypeFromPwCategory(pwStep.category),
                 status: pwStep.error || childStepFailed ? ResultStatusEnum.FAILED : ResultStatusEnum.PASSED,
-                failure: this._getCbFailureFromPwError(pwStep),
+                failure: this._getCbFailureFromPwError(pwStep, testDir),
                 // FIXME: we can probably need to convert the inline screenshot to an attachment to reduce the payload size
                 // screenShot: pwStep.error && failureScreenshot ? this._getBase64FromScreeenshot(failureScreenshot) : undefined,
                 steps: childSteps,
@@ -459,7 +459,7 @@ export class PwEventProcessor {
         return StepTypeEnum.GENERAL;
     }
 
-    private _getCbFailureFromPwError(pwStepOrTest?: TestStep | TestResult): CbFailureResult | undefined {
+    private _getCbFailureFromPwError(pwStepOrTest?: TestStep | TestResult, testDir?: string): CbFailureResult | undefined {
         if (!pwStepOrTest || !pwStepOrTest.error) {
             return undefined;
         }
@@ -476,6 +476,8 @@ export class PwEventProcessor {
             snippet: error.snippet,
             message: message,
             stacktrace: stack,
+            location: error.location ? getCodeLocation(error.location, testDir) : undefined,
+            line: error.location?.line,
         };
     }
 
