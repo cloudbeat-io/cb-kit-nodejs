@@ -46,6 +46,20 @@ export class RuntimeApi extends ApiBaseClientV2 {
         }
     }
 
+    // runtime/run/{runId}/instance/{instanceId}/case/status/bulk
+    public async bulkUpdateCaseStatus(runId: string, instanceId: string, statusList: CaseStatusUpdateReq[]) {
+        if (!statusList || statusList.length === 0) {
+            return;
+        }
+        const path = `/runtime/run/${runId}/instance/${instanceId}/case/status/bulk`;
+        try {
+            await this.instance.post(path, statusList);
+        }
+        catch (e: any) {
+            console.error('Failed to bulk update case runtime status', e);
+        }
+    }
+
     // runtime/run/{runId}/instance/{instanceId}/suite/status
     public async updateSuiteStatus(status: SuiteStatusUpdateReq) {
         const path = `/runtime/run/${status.runId}/instance/${status.instanceId}/suite/status`;
