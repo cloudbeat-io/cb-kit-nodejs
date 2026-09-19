@@ -20,5 +20,10 @@ export class cb {
 }
 
 const sendToReporter = (type: string, data: any ): void => {
+    // the reporter consumes these messages only when the test is executed by CloudBeat,
+    // otherwise they would just pollute the output of local and CI runs
+    if (!process.env.CB_RUN_ID) {
+        return;
+    }
     process.stdout.write(JSON.stringify({ type, data }));
 };
