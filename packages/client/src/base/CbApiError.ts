@@ -1,4 +1,5 @@
 export class CbApiError extends Error {
+    public status?: number;
     private path?: string;
 
     constructor(msgOrError: string | Error) {
@@ -7,6 +8,7 @@ export class CbApiError extends Error {
 
         if (msgOrError instanceof Error && (msgOrError as any).response) {
             const { response } = msgOrError as any;
+            this.status = response.status;
             if (response.status === 500) {
                 this.message = 'Internal server error, please try again later.';
             }
@@ -44,9 +46,15 @@ export class CbApiError extends Error {
 
                 this.message = message;
             }
+            else if ((response.status === 400 || response.status === 403) && typeof response.data === 'string' && response.data) {
+                this.message = response.data;
+            }
             else {
                 this.message = response.statusText;
             }
+        }
+        else if (msgOrError instanceof CbApiError) {
+            this.status = msgOrError.status;
         }
         Error.captureStackTrace(this, this.constructor);
     }
