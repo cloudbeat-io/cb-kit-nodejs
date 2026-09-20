@@ -24,6 +24,7 @@ export class ProjectSyncStatus {
     syncDate?: string;
     syncStatus?: string;
     message?: string;
+    details?: string;
 
     constructor(data: any) {
         Object.assign<ProjectSyncStatus, any>(this, data);
