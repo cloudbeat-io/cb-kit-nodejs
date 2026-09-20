@@ -30,28 +30,20 @@ export class CbRestApiClient {
         if (!config.headers['Content-Type'] && !config.headers['content-type']) {
             config.headers['Content-Type'] = 'application/json';
         }
-        // TODO:
-        //      Should add support for X-Api-Key header
-        //      Should remove support for Bearer token (backend doesn't seem to support it?)
-        //      Should eventually remove support for apiKey URL query parameter
         if (this.authType === AuthenticationType.Bearer) {
             config.headers.Authorization = `Bearer ${this.authToken}`;
         }
         else {
-            const params = new URLSearchParams({
-                apiKey: this.authToken,
-            });
+            // the key is sent as a header and never as a query parameter: URLs end up in access logs, proxies and browser history
+            config.headers['X-Api-Key'] = this.authToken;
 
             // append random parameter to each GET request to prevent caching proxies interfering with our requests
             if (config.method === 'get') {
-                params.append('rnd', Math.floor(Math.random() * 1000000000000).toString());
+                const params = new URLSearchParams({
+                    rnd: Math.floor(Math.random() * 1000000000000).toString(),
+                });
+                config.url += `${config.url?.includes('?') ? '&' : '?'}${params.toString()}`;
             }
-
-            // append query string to the url
-            if (!config.url?.endsWith('?') && !config.url?.endsWith('&')) {
-                config.url += '?';
-            }
-            config.url += params.toString();
         }
         // log request
         debug(`REQ: ${config.method!} ${config.url!}`);
