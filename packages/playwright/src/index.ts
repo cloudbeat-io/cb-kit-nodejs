@@ -48,7 +48,12 @@ export default class CbReporter implements Reporter {
             this.eventProcessor = new PwEventProcessor(this.client, options);
         }
         // so just ignore all PW events if we are not running in CB
-        catch {}
+        catch (e: any) {
+            // ... but if we are running in a CB agent - it's a problem, and we must not stay silent about it
+            if (this.isRunningInCbAgent) {
+                console.error(`[CloudBeat] The reporter is disabled, test results will not be reported: ${e?.message || e}`);
+            }
+        }
     }
 
     onBegin(pwConfig: FullConfig, pwSuite: Suite): void {
@@ -133,16 +138,26 @@ export default class CbReporter implements Reporter {
     }
 
 
-    onEnd(pwResult: FullResult): void {
+    // NOTE: onEnd must be async. Playwright awaits it before it exits, which gives us the chance
+    // to make sure that the run result is delivered to the agent.
+    async onEnd(pwResult: FullResult): Promise<void> {
         if (!this.eventProcessor) {
             return;
         }
-        // this.addSkippedTests();
-        // this.client.onEnd(this.cbRootSuite);
-        this.eventProcessor.onRunEnd(pwResult);
-        /* for (const group of this.allureGroupCache.values()) {
-            group.endGroup();
-        }*/
+        try {
+            this.eventProcessor.onRunEnd(pwResult);
+        }
+        catch (e) {
+            console.error('[CloudBeat] Failed to report the run result:', e);
+        }
+        await this.client.flush();
+    }
+
+    onError(pwError: TestError): void {
+        if (!this.eventProcessor) {
+            return;
+        }
+        this.eventProcessor.onError(pwError);
     }
 
     onStdOut(chunk: string | Buffer, pwTest?: TestCase, pwResult?: TestResult): void {

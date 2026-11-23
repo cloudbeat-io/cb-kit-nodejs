@@ -1,13 +1,20 @@
+import fs from 'fs';
 import { v2 } from '@cloudbeat/client';
-import { CaseResult, ResultStatusEnum, RunStatusEnum, StepResult, SuiteResult, TestResult } from '@cloudbeat/types';
+import { CaseResult, RunStatusEnum, StepResult, SuiteResult, TestResult } from '@cloudbeat/types';
 import { io, Socket } from 'socket.io-client';
 import { FRAMEWORK_NAME, LANGUAGE_NAME } from '../const';
 import { CbReporterClient } from './CbReporterClient';
-const Queue = require('js-queue');
+
+// how long to wait for a single ack from the agent wrapper before re-sending the event
+const ACK_TIMEOUT_MS = 5000;
+const RUN_START_TIMEOUT_MS = 10000;
+// the run result is the most important message - give it enough time to be delivered, even across reconnects
+const RUN_END_TIMEOUT_MS = 30000;
 
 export class LocalReporterClient implements CbReporterClient {
     private socket?: Socket;
-    private queue?: any;
+    private runStartDelivery?: Promise<boolean>;
+    private runEndDelivery?: Promise<boolean>;
     private cbApiClient?: v2.RuntimeApi;
     private runId?: string;
     private instanceId?: string;
@@ -23,10 +30,9 @@ export class LocalReporterClient implements CbReporterClient {
     }
 
     connect(): void {
-        this.queue = new Queue();
-        this.queue.stop = true;
-        this.queue.autoRun = true;
-
+        if (this.socket) {
+            return;
+        }
         this.socket = io(
             `ws://localhost:${  process.env.CB_REPORT_SERVER_PORT || 3000}`,
             {
@@ -34,20 +40,30 @@ export class LocalReporterClient implements CbReporterClient {
                 reconnection: true,
                 reconnectionDelay: 500,
                 reconnectionDelayMax: 5000,
-                reconnectionAttempts: 10,
+                // never give up: the wrapper is a local process which lives as long as we do
+                reconnectionAttempts: Infinity,
                 auth: {
                     runId: process.env.CB_RUN_ID,
                 },
             },
         );
-        this.handleSocketEvents();
+        this.socket.io.on('error', (err) => {
+            console.error('socket.io error', err);
+        });
     }
 
     onRunStart(): void {
-        this.queue.add(this.getEventEmitter('run:start', {}));
+        this.runStartDelivery = this.emitReliably('run:start', {}, RUN_START_TIMEOUT_MS);
     }
+
     onRunEnd(result?: TestResult): void {
-        this.queue.add(this.getEventEmitter('run:end', result));
+        // safety net: persist the result on disk, so the wrapper can pick it up even if the socket delivery fails
+        this.writeFallbackResultFile(result);
+        this.runEndDelivery = this.emitReliably('run:end', result, RUN_END_TIMEOUT_MS);
+    }
+
+    async flush(): Promise<void> {
+        await Promise.all([this.runStartDelivery, this.runEndDelivery]);
     }
 
     onSuiteStart(cbSuite: SuiteResult): void {
@@ -163,34 +179,65 @@ export class LocalReporterClient implements CbReporterClient {
         // this.queue.add(this.getEventPayload('step:end', cbStep));
     }
 
-    private handleSocketEvents() {
-        if (!this.socket) {
+    private writeFallbackResultFile(result?: TestResult): void {
+        const filePath = process.env.CB_RESULT_FALLBACK_FILE;
+        if (!filePath || !result) {
             return;
         }
-
-        this.socket.io.on('error', (err) => {
-			console.error('socket.io error', err);
-            this.queue.stop = true;
-        });
-
-        this.socket.on('connect', () => {
-            this.queue.stop = false;
-            this.queue.next();
-        });
-
-        this.socket.on('disconnect', () => {
-            this.queue.stop = true;
-        });
+        try {
+            fs.writeFileSync(filePath, JSON.stringify(result));
+        }
+        catch (e) {
+            console.error('[CloudBeat] Failed to write the fallback result file:', e);
+        }
     }
 
-    private getEventEmitter(eventName: string, payload: any): any {
-        return () => {
+    /**
+     * Emits the event and waits for the ack. If the socket is down or the ack doesn't arrive in time -
+     * waits for reconnect and re-sends, until the overall timeout expires.
+     * Resolves to true if the event was acknowledged.
+     */
+    private async emitReliably(eventName: string, payload: any, timeoutMs: number): Promise<boolean> {
+        const socket = this.socket;
+        if (!socket) {
+            return false;
+        }
+        const deadline = Date.now() + timeoutMs;
+        while (Date.now() < deadline) {
+            if (!socket.connected) {
+                await this.waitForConnect(socket, deadline - Date.now());
+                continue;
+            }
             try {
-                this.socket?.emit(eventName, payload, () => this.queue.next());
+                await socket.timeout(ACK_TIMEOUT_MS).emitWithAck(eventName, payload);
+                return true;
             }
-            catch (e) {
-                console.log('LocalReporterClient error:', e);
+            catch (e: any) {
+                // ack timeout (or disconnect in the middle) - try again.
+                // anything else (e.g. non-serializable payload) is not recoverable
+                if (!e || e.message !== 'operation has timed out') {
+                    console.error(`[CloudBeat] Failed to send '${eventName}' event:`, e);
+                    return false;
+                }
             }
-        };
+        }
+        console.error(`[CloudBeat] Timed out sending '${eventName}' event to the agent`);
+        return false;
+    }
+
+    private waitForConnect(socket: Socket, timeoutMs: number): Promise<void> {
+        return new Promise((resolve) => {
+            if (timeoutMs <= 0 || socket.connected) {
+                resolve();
+                return;
+            }
+            const done = () => {
+                clearTimeout(timer);
+                socket.off('connect', done);
+                resolve();
+            };
+            const timer = setTimeout(done, Math.min(timeoutMs, 1000));
+            socket.once('connect', done);
+        });
     }
 }
