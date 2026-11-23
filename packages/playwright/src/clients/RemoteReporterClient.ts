@@ -20,6 +20,10 @@ export class RemoteReporterClient implements CbReporterClient {
         throw new Error('Method not implemented.');
     }
 
+    async flush(): Promise<void> {
+
+    }
+
     onSuiteStart(cbSuite: SuiteResult): void {
 
     }

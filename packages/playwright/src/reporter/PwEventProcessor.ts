@@ -45,6 +45,9 @@ export class PwEventProcessor {
     private readonly cbSuiteCache = new Map<string, CbSuiteResult>();
     private readonly cbCaseCache = new Map<TestCase, CbCaseResult>();
     private pwRootSuite?: Suite;
+    private readonly startTime = (new Date()).getTime();
+    private readonly errors: TestError[] = [];
+    private readonly startedCases = new Set<TestCase>();
     // counters to help calculate overall test run progress
     private allCasesCount: number = 1;
     private lastCaseOrder: number = 1;
@@ -60,24 +63,7 @@ export class PwEventProcessor {
         this.rootDir = pwConfig.rootDir + path.sep;
         this.pwRootSuite = pwSuite;
         this.allCasesCount = pwSuite.allTests().length;
-        this.cbRunResult = {
-            startTime: (new Date()).getTime(),
-            runId: this.runId!,
-            instanceId: this.instanceId!,
-            agentId: this.agentId!,
-            accountId: this.accountId,
-            userId: this.userId,
-            locationId: this.locationId!.toString(),
-            totalCases: this.allCasesCount,
-            metadata: {
-                executingUserId: this.userId!,
-                accountId: this.accountId!,
-                framework: 'Playwright',
-                language: 'JavaScript',
-            },
-            capabilities: this._getCapabilities(pwConfig),
-            suites: [],
-        };
+        this.cbRunResult = this.createRunResult(this.allCasesCount, this._getCapabilities(pwConfig));
         this.cbClient.onRunStart();
 
         for (const pwTest of pwSuite.allTests()) {
@@ -89,7 +75,11 @@ export class PwEventProcessor {
     }
 
     public onTestBegin(pwTest: TestCase) {
-        const cbCase = this.cbCaseCache.get(pwTest)!;
+        const cbCase = this.cbCaseCache.get(pwTest);
+        if (!cbCase) {
+            return;
+        }
+        this.startedCases.add(pwTest);
         // @ts-expect-error access to private property _parent
         // eslint-disable-next-line no-underscore-dangle
         const cbParentSuite = cbCase._parent as CbSuiteResult;
@@ -130,14 +120,33 @@ export class PwEventProcessor {
     }
 
     public onRunEnd(result: FullResult) {
+        // Playwright runs global setup and loads the test files BEFORE it calls onBegin.
+        // If any of these fail (or no tests were found, or the test list/grep matched nothing) - onBegin is never called,
+        // but onEnd still is. We must still report the (failed) run, otherwise CloudBeat gets no result at all.
+        const beganRun = !!this.cbRunResult;
         if (!this.cbRunResult) {
-            return; // not suppose to happen, log this
+            this.cbClient.connect();
+            this.cbRunResult = this.createRunResult(0, {});
         }
         this.cbRunResult.endTime = (new Date()).getTime();
         this.cbRunResult.status = this._getResultStatusEnum(result.status);
         this.cbRunResult.duration = this.cbRunResult.endTime - this.cbRunResult.startTime;
+
+        // nothing below is allowed to prevent the result from being sent
+        try {
+            this.finalizeUnfinishedCases(result.status);
+        }
+        catch (e) {
+            console.error('[CloudBeat] Failed to finalize unfinished cases:', e);
+        }
+        this.setRunFailureFromErrors(result.status, beganRun);
         this.removeInternalPropsFromResult();
-        this.reportOnSuiteEnd();
+        try {
+            this.reportOnSuiteEnd();
+        }
+        catch (e) {
+            console.error('[CloudBeat] Failed to report suite end:', e);
+        }
         this.cbClient.onRunEnd(this.cbRunResult);
     }
 
@@ -147,7 +156,9 @@ export class PwEventProcessor {
     public onStepEnd(test: TestCase, result: TestResult, step: TestStep) {
     }
 
+    // errors which are not related to a particular test: global setup/teardown, test loading/syntax errors, worker crashes, etc.
     public onError(error: TestError): void {
+        this.errors.push(error);
     }
 
     public onStdOut(chunk: string | Buffer, pwTest: TestCase | undefined, pwResult: TestResult | undefined) {
@@ -171,6 +182,86 @@ export class PwEventProcessor {
         }
         catch {
             this.addSystemConsoleLog(String(chunk));
+        }
+    }
+
+    private createRunResult(totalCases: number, capabilities: any): CbTestResult {
+        return {
+            startTime: this.startTime,
+            runId: this.runId!,
+            instanceId: this.instanceId!,
+            agentId: this.agentId!,
+            accountId: this.accountId,
+            userId: this.userId,
+            locationId: this.locationId!.toString(),
+            totalCases,
+            metadata: {
+                executingUserId: this.userId!,
+                accountId: this.accountId!,
+                framework: 'Playwright',
+                language: 'JavaScript',
+            },
+            capabilities,
+            suites: [],
+        };
+    }
+
+    // cases which were never reported as finished (e.g. worker crash, global timeout, interrupted run)
+    // must not be left without a status
+    private finalizeUnfinishedCases(runStatus: FullResult['status']) {
+        const now = (new Date()).getTime();
+        this.cbCaseCache.forEach((cbCase, pwTest) => {
+            if (cbCase.status) {
+                return;
+            }
+            const started = this.startedCases.has(pwTest);
+            cbCase.endTime = now;
+            cbCase.duration = now - cbCase.startTime;
+            if (started) {
+                cbCase.status = ResultStatusEnum.FAILED;
+                cbCase.failure = {
+                    type: 'GENERAL_ERROR',
+                    message: `The test did not finish. The test run ended with status '${runStatus}'.`,
+                };
+            }
+            else {
+                cbCase.status = ResultStatusEnum.SKIPPED;
+            }
+            // @ts-expect-error access to private property _parent
+            // eslint-disable-next-line no-underscore-dangle
+            const cbSuiteResult = cbCase._parent as CbSuiteResult;
+            this.endParentSuiteForCase(cbSuiteResult, cbCase.status);
+            this.cbClient.onCaseEnd(cbCase, cbSuiteResult);
+        });
+    }
+
+    // surface errors which are not attached to any test (otherwise the run just shows up as failed with no explanation)
+    private setRunFailureFromErrors(runStatus: FullResult['status'], beganRun: boolean) {
+        if (!this.cbRunResult) {
+            return;
+        }
+        if (this.errors.length === 0) {
+            if (!beganRun && runStatus !== 'passed') {
+                this.errors.push({ message: `Playwright finished with status '${runStatus}' before starting the tests. Check that the specified tests exist and that the global setup is working.` });
+            }
+            else {
+                return;
+            }
+        }
+        const messages = this.errors.map(e => stripAscii(e.message || e.value || e.stack || 'Unknown error'));
+        const first = this.errors[0];
+        // run-level failure is an object (not a string as it is declared in @cloudbeat/types)
+        (this.cbRunResult as any).failure = {
+            type: beganRun ? 'GENERAL_ERROR' : 'INITIALIZATION_ERROR',
+            subtype: this._getPwErrorType(first),
+            message: messages.join('\n\n'),
+            stacktrace: first.stack ? stripAscii(first.stack) : undefined,
+            location: first.location ? getCodeLocation(first.location, undefined) : undefined,
+            line: first.location?.line,
+            isFatal: !beganRun,
+        };
+        if (this.cbRunResult.status !== ResultStatusEnum.FAILED) {
+            this.cbRunResult.status = ResultStatusEnum.FAILED;
         }
     }
 
